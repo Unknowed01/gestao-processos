@@ -1,0 +1,806 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
+import {
+  ChevronRight, Plus, Trash2, Loader2, Mail, Building2, Workflow,
+  Activity, ListChecks, Users, Wrench, Target, ArrowLeft, UserCheck,
+  ArrowDownToLine, ArrowUpFromLine, ListOrdered, ChevronLeft, Calendar,
+  CircleDot
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Area, AreaDetalhe, Membro, Processo, Actividade, Tarefa, Ferramenta,
+  TIPO_COLORS, TIPO_DOT, FREQ_COLORS, getAreaColor
+} from '@/lib/types'
+import { cn } from '@/lib/utils'
+
+/* ============== Breadcrumb de drill-down ============== */
+export interface BreadcrumbItem {
+  label: string
+  level: 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa'
+  id?: string
+}
+
+export function DrillBreadcrumb({
+  items, onNavigate
+}: {
+  items: BreadcrumbItem[]
+  onNavigate: (item: BreadcrumbItem, index: number) => void
+}) {
+  return (
+    <nav className="flex items-center gap-1 text-sm flex-wrap mb-6">
+      {items.map((item, idx) => {
+        const isLast = idx === items.length - 1
+        return (
+          <div key={idx} className="flex items-center gap-1">
+            {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50" />}
+            <button
+              onClick={() => !isLast && onNavigate(item, idx)}
+              disabled={isLast}
+              className={cn(
+                "px-2 py-1 rounded-md transition-colors",
+                isLast
+                  ? "font-semibold text-foreground bg-muted/60 cursor-default"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              {item.label}
+            </button>
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
+
+/* ============== Lista de Áreas (grid de cartões) ============== */
+export function AreasGridView({
+  areas, loading, onOpenArea, onCreateArea, canCreate
+}: {
+  areas: Area[]
+  loading: boolean
+  onOpenArea: (id: string) => void
+  onCreateArea: () => void
+  canCreate?: boolean
+}) {
+  const [search, setSearch] = useState('')
+  const filtered = areas.filter(a =>
+    a.nome.toLowerCase().includes(search.toLowerCase()) ||
+    a.descricao?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Áreas</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Seleccione uma área para ver os seus processos, membros, ferramentas e objectivos.
+          </p>
+        </div>
+        {canCreate && (
+          <Button onClick={onCreateArea}>
+            <Plus className="w-4 h-4 mr-2" /> Nova Área
+          </Button>
+        )}
+      </div>
+
+      <div className="relative max-w-md">
+        <Input
+          placeholder="Pesquisar área..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-3"
+        />
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col items-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">A carregar áreas...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center">
+            <Building2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <h3 className="font-semibold text-sm">Nenhuma área encontrada</h3>
+            <p className="text-xs text-muted-foreground mt-1">Tente outro termo ou crie uma nova área.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((area, idx) => {
+            const color = getAreaColor(idx)
+            return (
+              <button
+                key={area.id}
+                onClick={() => onOpenArea(area.id)}
+                className="group text-left"
+              >
+                <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shadow-sm", color.icon)}>
+                        <Building2 className="w-5 h-5 text-white" />
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <h3 className="font-semibold text-sm leading-tight mb-1">{area.nome}</h3>
+                    {area.descricao && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{area.descricao}</p>
+                    )}
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-3 border-t border-border">
+                      <span className="flex items-center gap-1"><Workflow className="w-3 h-3" />{area._count?.processos ?? 0}</span>
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{area._count?.membros ?? 0}</span>
+                      <span className="flex items-center gap-1"><Wrench className="w-3 h-3" />{area._count?.ferramentas ?? 0}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ============== Detalhe de Área ============== */
+export function AreaDetailView({
+  areaId, area, loading, onOpenProcesso, onBack, onRefresh
+}: {
+  areaId: string
+  area: AreaDetalhe | null
+  loading: boolean
+  onOpenProcesso: (id: string) => void
+  onBack: () => void
+  onRefresh: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const processos = area?.processos ?? []
+  const membros = area?.membros ?? []
+  const ferramentas = area?.ferramentas ?? []
+
+  const filteredProcessos = processos.filter(p =>
+    p.nome.toLowerCase().includes(search.toLowerCase())
+  )
+
+  if (loading && !area) {
+    return (
+      <div className="flex flex-col items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">A carregar área...</p>
+      </div>
+    )
+  }
+  if (!area) {
+    return <div className="text-center py-20 text-muted-foreground">Área não encontrada.</div>
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cabeçalho da área */}
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Área Organizacional</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{area.nome}</h1>
+          {area.descricao && <p className="text-muted-foreground mt-1 text-sm max-w-3xl">{area.descricao}</p>}
+        </div>
+      </div>
+
+      {/* Tabs: Processos | Equipa | Ferramentas | Objectivos */}
+      <Tabs defaultValue="processos">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
+          <TabsTrigger value="processos" className="text-xs sm:text-sm">
+            <Workflow className="w-3.5 h-3.5 mr-1.5" />Processos
+            <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{processos.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="equipa" className="text-xs sm:text-sm">
+            <Users className="w-3.5 h-3.5 mr-1.5" />Equipa
+            <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{membros.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="ferramentas" className="text-xs sm:text-sm">
+            <Wrench className="w-3.5 h-3.5 mr-1.5" />Ferramentas
+            <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{ferramentas.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="objectivos" className="text-xs sm:text-sm">
+            <Target className="w-3.5 h-3.5 mr-1.5" />Objectivos
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Processos */}
+        <TabsContent value="processos" className="space-y-4 mt-4">
+          {processos.length > 0 && (
+            <div className="relative max-w-md">
+              <Input
+                placeholder="Pesquisar processo nesta área..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          )}
+          {filteredProcessos.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-10 text-center">
+                <Workflow className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {processos.length === 0 ? "Nenhum processo nesta área ainda." : "Nenhum processo encontrado."}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredProcessos.map((p) => (
+                <ProcessoCard key={p.id} processo={p} onClick={() => onOpenProcesso(p.id)} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Equipa */}
+        <TabsContent value="equipa" className="mt-4">
+          {membros.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-10 text-center">
+                <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhum membro associado a esta área.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {membros.map((m) => {
+                const iniciais = m.nome.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
+                const totalResp = (m._count?.procResp ?? 0) + (m._count?.actResp ?? 0)
+                const totalSub = (m._count?.procSubst ?? 0) + (m._count?.actSubst ?? 0)
+                return (
+                  <Card key={m.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                          {iniciais}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm truncate">{m.nome}</h3>
+                          {m.cargo && <p className="text-xs text-muted-foreground truncate">{m.cargo}</p>}
+                          {m.email && (
+                            <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
+                              <Mail className="w-3 h-3" />
+                              <span className="truncate">{m.email}</span>
+                            </div>
+                          )}
+                          {(totalResp > 0 || totalSub > 0) && (
+                            <div className="flex items-center gap-2 mt-2 text-[10px]">
+                              {totalResp > 0 && (
+                                <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50">
+                                  <UserCheck className="w-2.5 h-2.5 mr-0.5" />{totalResp} resp.
+                                </Badge>
+                              )}
+                              {totalSub > 0 && (
+                                <Badge variant="outline" className="text-[10px] py-0 bg-amber-50">
+                                  {totalSub} substit.
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Ferramentas */}
+        <TabsContent value="ferramentas" className="mt-4">
+          {ferramentas.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-10 text-center">
+                <Wrench className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhuma ferramenta associada a esta área.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {ferramentas.map((f) => (
+                <Card key={f.id}>
+                  <CardContent className="p-4">
+                    <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center mb-2">
+                      <Wrench className="w-4 h-4 text-teal-600" />
+                    </div>
+                    <h3 className="font-medium text-sm truncate">{f.nome}</h3>
+                    {f.descricao && <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{f.descricao}</p>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Objectivos */}
+        <TabsContent value="objectivos" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                Objectivos da Área
+              </CardTitle>
+              <CardDescription className="text-xs">Metas e objectivos estratégicos desta área.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {area.objectivos ? (
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{area.objectivos}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Nenhum objectivo definido para esta área.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+
+/* ============== Card de Processo (reutilizável) ============== */
+function ProcessoCard({ processo, onClick }: { processo: Processo; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="group text-left">
+      <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Badge variant="outline" className={cn("text-[10px] py-0", TIPO_COLORS[processo.tipo])}>
+                <span className={cn("w-1.5 h-1.5 rounded-full mr-1", TIPO_DOT[processo.tipo])} />
+                {processo.tipo}
+              </Badge>
+              <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[processo.frequencia])}>
+                <Calendar className="w-2.5 h-2.5 mr-0.5" />{processo.frequencia}
+              </Badge>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </div>
+          <CardTitle className="text-sm mt-2 leading-tight">{processo.nome}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-2">
+          {processo.descricao && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{processo.descricao}</p>
+          )}
+          <Separator />
+          <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <UserCheck className="w-3 h-3" />
+                <span className="truncate max-w-[80px]">{processo.responsavel?.nome || '—'}</span>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-[10px] py-0">
+              {processo._count?.actividades ?? 0} act.
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </button>
+  )
+}
+
+/* ============== Detalhe de Processo ============== */
+export function ProcessoDetailView({
+  processo, loading, onOpenActividade, onBack, areaName
+}: {
+  processo: Processo & { actividades?: Actividade[]; _count?: { actividades: number } } | null
+  loading: boolean
+  onOpenActividade: (id: string) => void
+  onBack: () => void
+  areaName?: string
+}) {
+  const actividades = processo?.actividades ?? []
+
+  if (loading && !processo) {
+    return (
+      <div className="flex flex-col items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">A carregar processo...</p>
+      </div>
+    )
+  }
+  if (!processo) {
+    return <div className="text-center py-20 text-muted-foreground">Processo não encontrado.</div>
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <CircleDot className="w-3.5 h-3.5" />
+            <span>{areaName || processo.area?.nome} · Processo</span>
+          </div>
+          <div className="flex items-start gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{processo.nome}</h1>
+            <Badge variant="outline" className={cn("mt-1.5", TIPO_COLORS[processo.tipo])}>
+              <span className={cn("w-1.5 h-1.5 rounded-full mr-1", TIPO_DOT[processo.tipo])} />
+              {processo.tipo}
+            </Badge>
+            <Badge variant="secondary" className={cn("mt-1.5", FREQ_COLORS[processo.frequencia])}>
+              <Calendar className="w-3 h-3 mr-1" />{processo.frequencia}
+            </Badge>
+          </div>
+          {processo.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{processo.descricao}</p>}
+        </div>
+      </div>
+
+      {/* Responsáveis */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <UserCheck className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">Responsável</p>
+              <p className="text-sm font-medium truncate">{processo.responsavel?.nome || 'Não atribuído'}</p>
+              {processo.responsavel?.cargo && <p className="text-xs text-muted-foreground truncate">{processo.responsavel.cargo}</p>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">Substituto</p>
+              <p className="text-sm font-medium truncate">{processo.substituto?.nome || 'Não atribuído'}</p>
+              {processo.substituto?.cargo && <p className="text-xs text-muted-foreground truncate">{processo.substituto.cargo}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Actividades */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            Actividades do Processo
+          </h2>
+          <Badge variant="secondary">{actividades.length}</Badge>
+        </div>
+        {actividades.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-10 text-center">
+              <Activity className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhuma actividade neste processo.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {actividades.map((a) => (
+              <ActividadeCard key={a.id} actividade={a} onClick={() => onOpenActividade(a.id)} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ============== Card de Actividade ============== */
+function ActividadeCard({ actividade, onClick }: { actividade: Actividade; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="group text-left">
+      <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[actividade.frequencia])}>
+              <Calendar className="w-2.5 h-2.5 mr-0.5" />{actividade.frequencia}
+            </Badge>
+            <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </div>
+          <CardTitle className="text-sm mt-2 leading-tight">{actividade.nome}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-2">
+          {actividade.descricao && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{actividade.descricao}</p>
+          )}
+          <Separator />
+          <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-1 text-muted-foreground min-w-0">
+              <UserCheck className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{actividade.responsavel?.nome || '—'}</span>
+            </div>
+            <Badge variant="secondary" className="text-[10px] py-0">
+              {actividade._count?.tarefas ?? 0} tarefas
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </button>
+  )
+}
+
+/* ============== Detalhe de Actividade ============== */
+export function ActividadeDetailView({
+  actividade, loading, onOpenTarefa, onBack, processoName
+}: {
+  actividade: (Actividade & { tarefas?: Tarefa[] }) | null
+  loading: boolean
+  onOpenTarefa: (id: string) => void
+  onBack: () => void
+  processoName?: string
+}) {
+  const tarefas = actividade?.tarefas ?? []
+
+  if (loading && !actividade) {
+    return (
+      <div className="flex flex-col items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">A carregar actividade...</p>
+      </div>
+    )
+  }
+  if (!actividade) {
+    return <div className="text-center py-20 text-muted-foreground">Actividade não encontrada.</div>
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <Activity className="w-3.5 h-3.5" />
+            <span>{processoName || actividade.processo?.nome} · Actividade</span>
+          </div>
+          <div className="flex items-start gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{actividade.nome}</h1>
+            <Badge variant="secondary" className={cn("mt-1.5", FREQ_COLORS[actividade.frequencia])}>
+              <Calendar className="w-3 h-3 mr-1" />{actividade.frequencia}
+            </Badge>
+          </div>
+          {actividade.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{actividade.descricao}</p>}
+        </div>
+      </div>
+
+      {/* Responsáveis */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <UserCheck className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">Responsável</p>
+              <p className="text-sm font-medium truncate">{actividade.responsavel?.nome || 'Não atribuído'}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">Substituto</p>
+              <p className="text-sm font-medium truncate">{actividade.substituto?.nome || 'Não atribuído'}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tarefas */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <ListChecks className="w-4 h-4 text-primary" />
+            Tarefas da Actividade
+          </h2>
+          <Badge variant="secondary">{tarefas.length}</Badge>
+        </div>
+        {tarefas.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-10 text-center">
+              <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhuma tarefa nesta actividade.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {tarefas.map((t) => (
+              <TarefaCard key={t.id} tarefa={t} onClick={() => onOpenTarefa(t.id)} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ============== Card de Tarefa ============== */
+function TarefaCard({ tarefa, onClick }: { tarefa: Tarefa; onClick: () => void }) {
+  const numPassos = tarefa.procedimentos?.length ?? tarefa._count?.procedimentos ?? 0
+  return (
+    <button onClick={onClick} className="group text-left">
+      <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between gap-2">
+            <CardTitle className="text-sm flex items-center gap-2 leading-tight">
+              <ListChecks className="w-4 h-4 text-sky-500 flex-shrink-0" />
+              <span className="truncate">{tarefa.nome}</span>
+            </CardTitle>
+            <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 uppercase mb-0.5">
+                <ArrowDownToLine className="w-3 h-3" /> Inputs
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2">{tarefa.inputs || '—'}</p>
+            </div>
+            <div>
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-orange-700 uppercase mb-0.5">
+                <ArrowUpFromLine className="w-3 h-3" /> Outputs
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2">{tarefa.outputs || '—'}</p>
+            </div>
+          </div>
+          <Separator />
+          <div className="flex items-center gap-2 text-[11px]">
+            <Badge variant="outline" className="text-[10px] py-0">
+              <ListOrdered className="w-2.5 h-2.5 mr-1" />{numPassos} passos
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </button>
+  )
+}
+
+/* ============== Detalhe de Tarefa ============== */
+export function TarefaDetailView({
+  tarefa, loading, onBack, ferramentas, onDelete
+}: {
+  tarefa: (Tarefa & { procedimentos?: { id: string; passo: number; descricao: string }[] }) | null
+  loading: boolean
+  onBack: () => void
+  ferramentas: Ferramenta[]
+  onDelete: () => void
+}) {
+  if (loading && !tarefa) {
+    return (
+      <div className="flex flex-col items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">A carregar tarefa...</p>
+      </div>
+    )
+  }
+  if (!tarefa) {
+    return <div className="text-center py-20 text-muted-foreground">Tarefa não encontrada.</div>
+  }
+
+  const ferramentaIds = tarefa.ferramentaIds.split(',').filter(Boolean)
+  const ferramentasUsadas = ferramentas.filter(f => ferramentaIds.includes(f.id))
+
+  return (
+    <div className="space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <ListChecks className="w-3.5 h-3.5" />
+            <span>
+              {tarefa.actividade?.processo?.area?.nome} · {tarefa.actividade?.processo?.nome} · {tarefa.actividade?.nome} · Tarefa
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{tarefa.nome}</h1>
+          {tarefa.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{tarefa.descricao}</p>}
+        </div>
+        <Button variant="ghost" size="icon" onClick={onDelete} className="text-muted-foreground hover:text-destructive flex-shrink-0">
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+
+      {/* Inputs e Outputs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-emerald-700">
+              <ArrowDownToLine className="w-4 h-4" />
+              Inputs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-emerald-900 whitespace-pre-wrap">{tarefa.inputs || '—'}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-orange-700">
+              <ArrowUpFromLine className="w-4 h-4" />
+              Outputs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-orange-900 whitespace-pre-wrap">{tarefa.outputs || '—'}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Ferramentas */}
+      {ferramentasUsadas.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-primary" />
+              Ferramentas Utilizadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {ferramentasUsadas.map((f) => (
+                <Badge key={f.id} variant="secondary" className="py-1">
+                  <Wrench className="w-3 h-3 mr-1" />{f.nome}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Procedimentos */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ListOrdered className="w-4 h-4 text-primary" />
+            Procedimentos
+          </CardTitle>
+          <CardDescription className="text-xs">Passos a executar para completar a tarefa</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!tarefa.procedimentos || tarefa.procedimentos.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">Nenhum procedimento definido.</p>
+          ) : (
+            <ol className="space-y-3">
+              {tarefa.procedimentos.map((p) => (
+                <li key={p.id} className="flex items-start gap-3">
+                  <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                    {p.passo}
+                  </span>
+                  <div className="flex-1 pt-1">
+                    <p className="text-sm">{p.descricao}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

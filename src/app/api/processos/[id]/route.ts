@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// GET /api/processos/[id]
+// GET /api/processos/[id] - detalhe completo de um processo com suas actividades
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const processo = await db.processo.findUnique({
       where: { id },
       include: {
-        area: true,
-        responsavel: true,
-        substituto: true,
-        actividades: { include: { _count: { select: { tarefas: true } } }, orderBy: { createdAt: 'desc' } },
+        area: { select: { id: true, nome: true } },
+        responsavel: { select: { id: true, nome: true, cargo: true } },
+        substituto: { select: { id: true, nome: true, cargo: true } },
+        actividades: {
+          include: {
+            responsavel: { select: { id: true, nome: true } },
+            substituto: { select: { id: true, nome: true } },
+            _count: { select: { tarefas: true } },
+          },
+          orderBy: { nome: 'asc' },
+        },
+        _count: { select: { actividades: true } },
       },
     })
     if (!processo) return NextResponse.json({ error: 'Processo não encontrado' }, { status: 404 })
@@ -36,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         descricao,
         tipo,
         frequencia,
-        areaId: areaId || null,
+        areaId,
         responsavelId: responsavelId || null,
         substitutoId: substitutoId || null,
       },

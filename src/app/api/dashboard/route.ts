@@ -13,15 +13,28 @@ export async function GET() {
       db.ferramenta.count(),
     ])
 
-    // Tarefas recentes
+    // Tarefas recentes (com contexto completo)
     const tarefasRecentes = await db.tarefa.findMany({
-      take: 5,
+      take: 6,
       orderBy: { createdAt: 'desc' },
-      include: {
+      select: {
+        id: true,
+        nome: true,
+        inputs: true,
+        outputs: true,
+        createdAt: true,
         actividade: {
           select: {
+            id: true,
             nome: true,
-            processo: { select: { nome: true, area: { select: { nome: true } } } },
+            processo: {
+              select: {
+                id: true,
+                nome: true,
+                tipo: true,
+                area: { select: { id: true, nome: true } },
+              },
+            },
           },
         },
       },
@@ -33,10 +46,31 @@ export async function GET() {
       _count: true,
     })
 
+    // Distribuição de processos por frequência
+    const processosPorFreq = await db.processo.groupBy({
+      by: ['frequencia'],
+      _count: true,
+    })
+
+    // Áreas com contagem (top 6 por nº de processos)
+    const areasComContagem = await db.area.findMany({
+      select: {
+        id: true,
+        nome: true,
+        objectivos: true,
+        _count: {
+          select: { processos: true, membros: true, ferramentas: true },
+        },
+      },
+      orderBy: { nome: 'asc' },
+    })
+
     return NextResponse.json({
       counts: { areas, processos, actividades, tarefas, membros, ferramentas },
       tarefasRecentes,
       processosPorTipo,
+      processosPorFreq,
+      areasComContagem,
     })
   } catch (error) {
     console.error('Erro ao obter dashboard:', error)

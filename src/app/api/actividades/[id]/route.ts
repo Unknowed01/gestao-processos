@@ -1,17 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// GET /api/actividades/[id]
+// GET /api/actividades/[id] - detalhe completo de uma actividade com suas tarefas
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const actividade = await db.actividade.findUnique({
       where: { id },
       include: {
-        processo: { include: { area: true } },
-        responsavel: true,
-        substituto: true,
-        tarefas: { include: { procedimentos: { orderBy: { passo: 'asc' } } }, orderBy: { createdAt: 'desc' } },
+        processo: {
+          select: {
+            id: true, nome: true, tipo: true, frequencia: true,
+            area: { select: { id: true, nome: true } },
+          },
+        },
+        responsavel: { select: { id: true, nome: true, cargo: true } },
+        substituto: { select: { id: true, nome: true, cargo: true } },
+        tarefas: {
+          include: {
+            procedimentos: { orderBy: { passo: 'asc' } },
+            _count: { select: { procedimentos: true } },
+          },
+          orderBy: { nome: 'asc' },
+        },
+        _count: { select: { tarefas: true } },
       },
     })
     if (!actividade) return NextResponse.json({ error: 'Actividade não encontrada' }, { status: 404 })

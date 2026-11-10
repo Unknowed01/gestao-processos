@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// GET /api/areas - listar todas as áreas
+// GET /api/areas - listar todas as áreas (versão sumária)
 export async function GET() {
   try {
     const areas = await db.area.findMany({
       include: {
         _count: { select: { processos: true, membros: true, ferramentas: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { nome: 'asc' },
     })
     return NextResponse.json(areas)
   } catch (error) {
