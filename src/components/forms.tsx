@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale } from 'lucide-react'
+import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -296,7 +296,10 @@ export function ProcessoFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label className="flex items-center gap-1.5">
+                Tipo
+                <InfoTipoProcesso />
+              </Label>
               <Select value={form.tipo} onValueChange={v => setForm({ ...form, tipo: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -850,5 +853,45 @@ export function DeleteConfirmDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/* ============== Info icon para Tipo de Processo ============== */
+function InfoTipoProcesso() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); setOpen(!open) }}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        className="text-muted-foreground hover:text-primary transition-colors"
+        aria-label="Informação sobre tipos de processo"
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div className="absolute z-50 top-6 left-0 w-72 p-3 rounded-lg border border-border bg-popover shadow-md text-xs space-y-2">
+          <div>
+            <p className="font-semibold text-emerald-700 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Inbound
+            </p>
+            <p className="text-muted-foreground mt-0.5">Processos que recebem entradas externas — informação ou pedidos que chegam à companhia (ex.: recepção de e-mails, reclamações, propostas de clientes).</p>
+          </div>
+          <div>
+            <p className="font-semibold text-orange-700 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-orange-500" /> Outbound
+            </p>
+            <p className="text-muted-foreground mt-0.5">Processos que enviam saídas para o exterior — respostas, relatórios ou entregas enviadas pela companhia (ex.: envio de relatórios à ARSEG, resposta a clientes).</p>
+          </div>
+          <div>
+            <p className="font-semibold text-violet-700 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-violet-500" /> Gestão
+            </p>
+            <p className="text-muted-foreground mt-0.5">Processos internos de gestão e administração — actividades de coordenação, planeamento e controlo que não são nem inbound nem outbound.</p>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

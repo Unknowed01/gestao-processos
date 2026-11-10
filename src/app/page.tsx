@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import {
-  LayoutGrid, Building2, Users, Wrench,
+  LayoutGrid, Building2, Users, Wrench, Database,
   Menu, Workflow, ListChecks, Activity,
   Mail, UserPlus, Search, Trash2, Plus
 } from 'lucide-react'
@@ -18,6 +18,7 @@ import {
 } from '@/lib/types'
 import { DashboardView } from '@/components/dashboard-view'
 import { OrganogramaView } from '@/components/organograma-view'
+import { DadosView } from '@/components/dados-view'
 import {
   AreaDetailView, ProcessoDetailView, ActividadeDetailView,
   TarefaDetailView, DrillBreadcrumb, BreadcrumbItem
@@ -28,7 +29,7 @@ import {
   AreaFormData, MembroFormData, ProcessoFormData, ActividadeFormData, TarefaFormData, FerramentaFormData
 } from '@/components/forms'
 
-type ViewLevel = 'dashboard' | 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa' | 'membros' | 'ferramentas'
+type ViewLevel = 'dashboard' | 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa' | 'membros' | 'ferramentas' | 'dados'
 
 interface ViewState {
   level: ViewLevel
@@ -39,7 +40,7 @@ interface ViewState {
 }
 
 interface NavItem {
-  id: 'dashboard' | 'areas' | 'membros' | 'ferramentas'
+  id: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados'
   label: string
   icon: React.ComponentType<{ className?: string }>
 }
@@ -49,6 +50,7 @@ const NAV: NavItem[] = [
   { id: 'areas', label: 'Organograma', icon: Building2 },
   { id: 'membros', label: 'Membros', icon: Users },
   { id: 'ferramentas', label: 'Ferramentas', icon: Wrench },
+  { id: 'dados', label: 'Dados', icon: Database },
 ]
 
 const fetcher = async <T,>(url: string, opts?: RequestInit): Promise<T> => {
@@ -163,6 +165,7 @@ export default function Home() {
     if (view.level === 'tarefa' && view.tarefaId) loadTarefaDetalhe(view.tarefaId)
     if (view.level === 'membros') { loadMembros(); loadAreas() }
     if (view.level === 'ferramentas') { loadFerramentas(); loadAreas() }
+    if (view.level === 'dados') loadAreas()
   }, [view, loadDashboard, loadAreas, loadAreaDetalhe, loadProcessoDetalhe, loadActividadeDetalhe, loadTarefaDetalhe, loadMembros, loadFerramentas])
 
   // Sempre carrega dashboard
@@ -180,6 +183,7 @@ export default function Home() {
   const goToAreas = () => setView({ level: 'areas' })
   const goToMembros = () => setView({ level: 'membros' })
   const goToFerramentas = () => setView({ level: 'ferramentas' })
+  const goToDados = () => setView({ level: 'dados' })
 
   const openArea = (id: string) => {
     if (id === '__areas__') { goToAreas(); return }
@@ -228,9 +232,10 @@ export default function Home() {
     else if (target.level === 'actividade') setView({ level: 'actividade', areaId: view.areaId, processoId: view.processoId, actividadeId: target.id })
   }
 
-  const activeNav: 'dashboard' | 'areas' | 'membros' | 'ferramentas' =
+  const activeNav: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados' =
     view.level === 'membros' ? 'membros' :
     view.level === 'ferramentas' ? 'ferramentas' :
+    view.level === 'dados' ? 'dados' :
     view.level === 'dashboard' ? 'dashboard' : 'areas'
 
   // ===== Handlers de criação =====
@@ -462,6 +467,7 @@ export default function Home() {
                   else if (item.id === 'areas') goToAreas()
                   else if (item.id === 'membros') goToMembros()
                   else if (item.id === 'ferramentas') goToFerramentas()
+                  else if (item.id === 'dados') goToDados()
                   setSidebarOpen(false)
                 }}
                 className={cn(
@@ -502,6 +508,7 @@ export default function Home() {
              view.level === 'areas' ? 'Organograma' :
              view.level === 'membros' ? 'Membros' :
              view.level === 'ferramentas' ? 'Ferramentas' :
+             view.level === 'dados' ? 'Dados' :
              areaDetalhe?.nome || '—'}
           </h2>
           <div className="w-9" />
@@ -608,6 +615,10 @@ export default function Home() {
               onEdit={(f) => setEditFerramenta(f)}
               onDelete={(f) => askDelete('ferramenta', f.id, f.nome)}
             />
+          )}
+
+          {view.level === 'dados' && (
+            <DadosView areas={areas} />
           )}
         </div>
 
