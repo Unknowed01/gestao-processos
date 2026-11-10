@@ -1,0 +1,106 @@
+// Sistema de Gestão de Processos - baseado no plano Excalidraw
+// Hierarquia: Área → Processo → Actividade → Tarefa
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Area {
+  id          String      @id @default(cuid())
+  nome        String
+  descricao   String?
+  objectivos  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  processos   Processo[]
+  membros     Membro[]
+  ferramentas Ferramenta[]
+}
+
+model Processo {
+  id           String       @id @default(cuid())
+  nome         String
+  descricao    String?
+  tipo         String       // Inbound | Outbound | Gestão
+  frequencia   String       // Diária | Semanal | Mensal | Trimestral | Semestral | Anual | Programada
+  areaId       String
+  area         Area         @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  responsavelId   String?
+  responsavel     Membro?   @relation("ProcessoResponsavel", fields: [responsavelId], references: [id])
+  substitutoId    String?
+  substituto      Membro?   @relation("ProcessoSubstituto", fields: [substitutoId], references: [id])
+  actividades  Actividade[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Actividade {
+  id              String     @id @default(cuid())
+  nome            String
+  descricao       String?
+  frequencia      String
+  processoId      String
+  processo        Processo   @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  responsavelId   String?
+  responsavel     Membro?    @relation("ActividadeResponsavel", fields: [responsavelId], references: [id])
+  substitutoId    String?
+  substituto      Membro?    @relation("ActividadeSubstituto", fields: [substitutoId], references: [id])
+  tarefas         Tarefa[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model Tarefa {
+  id            String        @id @default(cuid())
+  nome          String
+  descricao     String?
+  inputs        String        // Entradas necessárias
+  outputs       String        // Resultados esperados
+  actividadeId  String
+  actividade    Actividade    @relation(fields: [actividadeId], references: [id], onDelete: Cascade)
+  procedimentos Procedimento[]
+  ferramentaIds String        // IDs separados por vírgula (SQLite não suporta listas)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Procedimento {
+  id         String   @id @default(cuid())
+  passo      Int       // ordem do passo
+  descricao  String
+  tarefaId   String
+  tarefa     Tarefa   @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Membro {
+  id           String     @id @default(cuid())
+  nome         String
+  email        String?    @unique
+  cargo        String?    // cargo/função
+  areaId       String?
+  area         Area?      @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  // Relações de responsabilidade
+  procResp     Processo[] @relation("ProcessoResponsavel")
+  procSubst    Processo[] @relation("ProcessoSubstituto")
+  actResp      Actividade[] @relation("ActividadeResponsavel")
+  actSubst     Actividade[] @relation("ActividadeSubstituto")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Ferramenta {
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  areaId    String?
+  area      Area?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
