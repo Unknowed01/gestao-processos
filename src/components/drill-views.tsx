@@ -4,7 +4,7 @@ import {
   ChevronRight, Plus, Trash2, Loader2, Mail, Building2, Workflow,
   Activity, ListChecks, Users, Wrench, Target, ArrowLeft, UserCheck,
   ArrowDownToLine, ArrowUpFromLine, ListOrdered, Calendar, CircleDot,
-  Pencil, MoreVertical
+  Pencil, MoreVertical, Scale, CheckCircle2, Circle, Clock
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Area, AreaDetalhe, Membro, Processo, Actividade, Tarefa, Ferramenta,
-  TIPO_COLORS, TIPO_DOT, FREQ_COLORS
+  TIPO_COLORS, TIPO_DOT, FREQ_COLORS, formatDataRevisao
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -65,7 +65,7 @@ export function DrillBreadcrumb({
 export function AreaDetailView({
   areaId, area, loading, onOpenProcesso, onBack, onRefresh,
   onEditArea, onDeleteArea, onEditProcesso, onDeleteProcesso,
-  onEditMembro, onDeleteMembro, onEditFerramenta, onDeleteFerramenta
+  onEditMembro, onDeleteMembro
 }: {
   areaId: string
   area: AreaDetalhe | null
@@ -79,13 +79,10 @@ export function AreaDetailView({
   onDeleteProcesso: (p: Processo) => void
   onEditMembro: (m: Membro) => void
   onDeleteMembro: (m: Membro) => void
-  onEditFerramenta: (f: Ferramenta) => void
-  onDeleteFerramenta: (f: Ferramenta) => void
 }) {
   const [search, setSearch] = useState('')
   const processos = area?.processos ?? []
   const membros = area?.membros ?? []
-  const ferramentas = area?.ferramentas ?? []
 
   const filteredProcessos = processos.filter(p =>
     p.nome.toLowerCase().includes(search.toLowerCase())
@@ -122,7 +119,7 @@ export function AreaDetailView({
       </div>
 
       <Tabs defaultValue="processos">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
           <TabsTrigger value="processos" className="text-xs sm:text-sm">
             <Workflow className="w-3.5 h-3.5 mr-1.5" />Processos
             <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{processos.length}</Badge>
@@ -130,10 +127,6 @@ export function AreaDetailView({
           <TabsTrigger value="equipa" className="text-xs sm:text-sm">
             <Users className="w-3.5 h-3.5 mr-1.5" />Equipa
             <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{membros.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="ferramentas" className="text-xs sm:text-sm">
-            <Wrench className="w-3.5 h-3.5 mr-1.5" />Ferramentas
-            <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{ferramentas.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="objectivos" className="text-xs sm:text-sm">
             <Target className="w-3.5 h-3.5 mr-1.5" />Objectivos
@@ -192,29 +185,6 @@ export function AreaDetailView({
                   membro={m}
                   onEdit={() => onEditMembro(m)}
                   onDelete={() => onDeleteMembro(m)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Ferramentas */}
-        <TabsContent value="ferramentas" className="mt-4">
-          {ferramentas.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-10 text-center">
-                <Wrench className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Nenhuma ferramenta associada a esta área.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {ferramentas.map((f) => (
-                <FerramentaCard
-                  key={f.id}
-                  ferramenta={f}
-                  onEdit={() => onEditFerramenta(f)}
-                  onDelete={() => onDeleteFerramenta(f)}
                 />
               ))}
             </div>
@@ -349,30 +319,6 @@ function MembroCard({
   )
 }
 
-/* ============== Card de Ferramenta ============== */
-function FerramentaCard({
-  ferramenta, onEdit, onDelete
-}: {
-  ferramenta: Ferramenta
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  return (
-    <Card className="group relative">
-      <CardContent className="p-4 pr-10">
-        <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center mb-2">
-          <Wrench className="w-4 h-4 text-teal-600" />
-        </div>
-        <h3 className="font-medium text-sm truncate">{ferramenta.nome}</h3>
-        {ferramenta.descricao && <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{ferramenta.descricao}</p>}
-      </CardContent>
-      <div className="absolute top-2 right-2 z-10">
-        <EntityMenu onEdit={onEdit} onDelete={onDelete} small />
-      </div>
-    </Card>
-  )
-}
-
 /* ============== Detalhe de Processo ============== */
 export function ProcessoDetailView({
   processo, loading, onOpenActividade, onBack, areaName,
@@ -454,6 +400,38 @@ export function ProcessoDetailView({
           </CardContent>
         </Card>
       </div>
+
+      {/* KPIs e Obrigações regulamentares */}
+      {(processo.kpis || processo.obrigacoes) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {processo.kpis && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-primary">
+                  <Target className="w-4 h-4" />
+                  KPIs do Processo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{processo.kpis}</p>
+              </CardContent>
+            </Card>
+          )}
+          {processo.obrigacoes && (
+            <Card className="border-rose-200 bg-rose-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2 text-rose-700">
+                  <Scale className="w-4 h-4" />
+                  Obrigações Regulamentares
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{processo.obrigacoes}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -680,10 +658,19 @@ function TarefaCard({
               </div>
             </div>
             <Separator />
-            <div className="flex items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-2 text-[11px] flex-wrap">
               <Badge variant="outline" className="text-[10px] py-0">
                 <ListOrdered className="w-2.5 h-2.5 mr-1" />{numPassos} passos
               </Badge>
+              {tarefa.instrucoesNasFerramentas ? (
+                <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <CheckCircle2 className="w-2.5 h-2.5 mr-1" />Instruções nas ferramentas
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] py-0 bg-amber-50 text-amber-700 border-amber-200">
+                  <Circle className="w-2.5 h-2.5 mr-1" />Instruções pendentes
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -736,8 +723,39 @@ export function TarefaDetailView({
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{tarefa.nome}</h1>
           {tarefa.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{tarefa.descricao}</p>}
+          {/* Data de revisão subtil */}
+          <div className="flex items-center gap-1 mt-2 text-[11px] text-muted-foreground/60">
+            <Clock className="w-3 h-3" />
+            <span>Última revisão: {formatDataRevisao(tarefa.dataRevisao)}</span>
+          </div>
         </div>
         <EntityMenu onEdit={onEdit} onDelete={onDelete} />
+      </div>
+
+      {/* Estado das instruções nas ferramentas */}
+      <div className={cn(
+        "p-4 rounded-lg border flex items-start gap-3",
+        tarefa.instrucoesNasFerramentas
+          ? "border-emerald-200 bg-emerald-50/50"
+          : "border-amber-200 bg-amber-50/50"
+      )}>
+        {tarefa.instrucoesNasFerramentas ? (
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+        ) : (
+          <Circle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        )}
+        <div className="flex-1">
+          <p className={cn("text-sm font-medium", tarefa.instrucoesNasFerramentas ? "text-emerald-900" : "text-amber-900")}>
+            {tarefa.instrucoesNasFerramentas
+              ? "Instruções implementadas nas ferramentas de trabalho"
+              : "Instruções ainda não implementadas nas ferramentas de trabalho"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {tarefa.instrucoesNasFerramentas
+              ? "As instruções desta tarefa já se encontram disponíveis nas ferramentas onde o trabalho é executado. Este sistema serve como mapeamento."
+              : "As instruções existem apenas neste sistema de mapeamento. O objectivo é que sejam implementadas nas ferramentas de trabalho (ex.: Pipefy, Excel, etc.)."}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

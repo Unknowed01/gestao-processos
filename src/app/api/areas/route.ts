@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const areas = await db.area.findMany({
       include: {
-        _count: { select: { processos: true, membros: true, ferramentas: true } },
+        _count: { select: { processos: true, membros: true } },
       },
       orderBy: { nome: 'asc' },
     })

@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 // GET /api/ferramentas
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url)
-    const areaId = searchParams.get('areaId')
     const ferramentas = await db.ferramenta.findMany({
-      where: areaId ? { areaId } : undefined,
-      include: { area: { select: { id: true, nome: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { nome: 'asc' },
     })
     return NextResponse.json(ferramentas)
   } catch (error) {
@@ -22,10 +18,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, descricao, areaId } = body
+    const { nome, descricao } = body
     if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     const ferramenta = await db.ferramenta.create({
-      data: { nome: nome.trim(), descricao, areaId: areaId || null },
+      data: { nome: nome.trim(), descricao },
     })
     return NextResponse.json(ferramenta, { status: 201 })
   } catch (error) {

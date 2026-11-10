@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil } from 'lucide-react'
+import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -178,6 +179,7 @@ export function MembroFormDialog({
 /* ============== Modal: Processo (Criar/Editar) ============== */
 export interface ProcessoFormData {
   nome: string; descricao: string; tipo: string; frequencia: string;
+  kpis: string; obrigacoes: string;
   areaId: string; responsavelId: string; substitutoId: string;
 }
 
@@ -195,9 +197,11 @@ export function ProcessoFormDialog({
 }) {
   const [form, setForm] = useState<ProcessoFormData>({
     nome: '', descricao: '', tipo: 'Inbound', frequencia: 'Mensal',
+    kpis: '', obrigacoes: '',
     areaId: '', responsavelId: '', substitutoId: ''
   })
   const [submitting, setSubmitting] = useState(false)
+  const [erroValidacao, setErroValidacao] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -206,10 +210,13 @@ export function ProcessoFormDialog({
         descricao: initial?.descricao ?? '',
         tipo: initial?.tipo ?? 'Inbound',
         frequencia: initial?.frequencia ?? 'Mensal',
+        kpis: initial?.kpis ?? '',
+        obrigacoes: initial?.obrigacoes ?? '',
         areaId: initial?.areaId ?? areaPreselecionada ?? '',
         responsavelId: initial?.responsavelId ?? '',
         substitutoId: initial?.substitutoId ?? '',
       })
+      setErroValidacao('')
     }
   }, [open, initial, areaPreselecionada])
 
@@ -219,8 +226,24 @@ export function ProcessoFormDialog({
     return membros.filter(m => m.areaId === form.areaId)
   }, [membros, form.areaId])
 
+  // Lista de membros para o select de substituto (exclui o responsável seleccionado)
+  const membrosParaSubstituto = useMemo(() => {
+    return membrosFiltrados.filter(m => m.id !== form.responsavelId)
+  }, [membrosFiltrados, form.responsavelId])
+
+  // Lista de membros para o select de responsável (exclui o substituto seleccionado)
+  const membrosParaResponsavel = useMemo(() => {
+    return membrosFiltrados.filter(m => m.id !== form.substitutoId)
+  }, [membrosFiltrados, form.substitutoId])
+
   const submit = async () => {
     if (!form.nome.trim() || !form.areaId) return
+    // Validação: responsável ≠ substituto
+    if (form.responsavelId && form.substitutoId && form.responsavelId === form.substitutoId) {
+      setErroValidacao('O responsável e o substituto não podem ser a mesma pessoa.')
+      return
+    }
+    setErroValidacao('')
     setSubmitting(true)
     try {
       await onSubmit(form)
@@ -237,6 +260,7 @@ export function ProcessoFormDialog({
       responsavelId: f.responsavelId && !membros.some(m => m.id === f.responsavelId && m.areaId === newAreaId) ? '' : f.responsavelId,
       substitutoId: f.substitutoId && !membros.some(m => m.id === f.substitutoId && m.areaId === newAreaId) ? '' : f.substitutoId,
     }))
+    setErroValidacao('')
   }
 
   return (
@@ -248,7 +272,7 @@ export function ProcessoFormDialog({
             {mode === 'edit' ? 'Editar Processo' : 'Novo Processo'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'edit' ? 'Actualize os dados do processo.' : 'Defina o processo, sua área, tipo, frequência e responsáveis.'}
+            {mode === 'edit' ? 'Actualize os dados do processo.' : 'Defina o processo, sua área, tipo, frequência, KPIs, obrigações regulamentares e responsáveis.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -293,25 +317,69 @@ export function ProcessoFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Responsável {form.areaId && membrosFiltrados.length === 0 && <span className="text-xs text-muted-foreground italic">(sem membros nesta área)</span>}</Label>
-              <Select value={form.responsavelId || 'none'} onValueChange={v => setForm({ ...form, responsavelId: v === 'none' ? '' : v })}>
+              <Select
+                value={form.responsavelId || 'none'}
+                onValueChange={v => { setForm({ ...form, responsavelId: v === 'none' ? '' : v }); setErroValidacao('') }}
+              >
                 <SelectTrigger><SelectValue placeholder="Seleccionar membro" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem responsável</SelectItem>
-                  {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  {membrosParaResponsavel.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Substituto</Label>
-            <Select value={form.substitutoId || 'none'} onValueChange={v => setForm({ ...form, substitutoId: v === 'none' ? '' : v })}>
+            <Label>Substituto {form.responsavelId && <span className="text-xs text-muted-foreground italic">(não pode ser o mesmo do responsável)</span>}</Label>
+            <Select
+              value={form.substitutoId || 'none'}
+              onValueChange={v => { setForm({ ...form, substitutoId: v === 'none' ? '' : v }); setErroValidacao('') }}
+            >
               <SelectTrigger><SelectValue placeholder="Seleccionar substituto" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sem substituto</SelectItem>
-                {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                {membrosParaSubstituto.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+
+          {/* KPIs e Obrigações regulamentares */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border">
+            <div className="space-y-2">
+              <Label htmlFor="p-kpis" className="flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-primary" />
+                KPIs do processo
+              </Label>
+              <Textarea
+                id="p-kpis"
+                value={form.kpis}
+                onChange={e => setForm({ ...form, kpis: e.target.value })}
+                rows={3}
+                placeholder="Ex: Taxa de conversão de propostas; tempo médio de resposta; volume de produção mensal"
+              />
+              <p className="text-[11px] text-muted-foreground">Indicadores chave de desempenho específicos deste processo.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-obrig" className="flex items-center gap-1.5">
+                <Scale className="w-3.5 h-3.5 text-primary" />
+                Obrigações regulamentares
+              </Label>
+              <Textarea
+                id="p-obrig"
+                value={form.obrigacoes}
+                onChange={e => setForm({ ...form, obrigacoes: e.target.value })}
+                rows={3}
+                placeholder="Ex: Reporte mensal à ARSEG; conformidade com ISP; LGPD aplicável"
+              />
+              <p className="text-[11px] text-muted-foreground">Obrigações legais e regulamentares aplicáveis ao processo.</p>
+            </div>
+          </div>
+
+          {erroValidacao && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              {erroValidacao}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
@@ -349,6 +417,7 @@ export function ActividadeFormDialog({
     processoId: '', responsavelId: '', substitutoId: ''
   })
   const [submitting, setSubmitting] = useState(false)
+  const [erroValidacao, setErroValidacao] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -360,6 +429,7 @@ export function ActividadeFormDialog({
         responsavelId: initial?.responsavelId ?? '',
         substitutoId: initial?.substitutoId ?? '',
       })
+      setErroValidacao('')
     }
   }, [open, initial, processoPreselecionado])
 
@@ -370,8 +440,17 @@ export function ActividadeFormDialog({
     return membros.filter(m => m.areaId === areaId)
   }, [membros, form.processoId, processos, areaIdFiltro])
 
+  // Listas mutuamente exclusivas
+  const membrosParaSubstituto = useMemo(() => membrosFiltrados.filter(m => m.id !== form.responsavelId), [membrosFiltrados, form.responsavelId])
+  const membrosParaResponsavel = useMemo(() => membrosFiltrados.filter(m => m.id !== form.substitutoId), [membrosFiltrados, form.substitutoId])
+
   const submit = async () => {
     if (!form.nome.trim() || !form.processoId) return
+    if (form.responsavelId && form.substitutoId && form.responsavelId === form.substitutoId) {
+      setErroValidacao('O responsável e o substituto não podem ser a mesma pessoa.')
+      return
+    }
+    setErroValidacao('')
     setSubmitting(true)
     try {
       await onSubmit(form)
@@ -390,6 +469,7 @@ export function ActividadeFormDialog({
       responsavelId: f.responsavelId && areaId && !membros.some(m => m.id === f.responsavelId && m.areaId === areaId) ? '' : f.responsavelId,
       substitutoId: f.substitutoId && areaId && !membros.some(m => m.id === f.substitutoId && m.areaId === areaId) ? '' : f.substitutoId,
     }))
+    setErroValidacao('')
   }
 
   return (
@@ -441,25 +521,30 @@ export function ActividadeFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Responsável {form.processoId && membrosFiltrados.length === 0 && <span className="text-xs text-muted-foreground italic">(sem membros nesta área)</span>}</Label>
-              <Select value={form.responsavelId || 'none'} onValueChange={v => setForm({ ...form, responsavelId: v === 'none' ? '' : v })}>
+              <Select value={form.responsavelId || 'none'} onValueChange={v => { setForm({ ...form, responsavelId: v === 'none' ? '' : v }); setErroValidacao('') }}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem responsável</SelectItem>
-                  {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  {membrosParaResponsavel.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Substituto</Label>
-              <Select value={form.substitutoId || 'none'} onValueChange={v => setForm({ ...form, substitutoId: v === 'none' ? '' : v })}>
+              <Label>Substituto {form.responsavelId && <span className="text-xs text-muted-foreground italic">(não pode ser o mesmo do responsável)</span>}</Label>
+              <Select value={form.substitutoId || 'none'} onValueChange={v => { setForm({ ...form, substitutoId: v === 'none' ? '' : v }); setErroValidacao('') }}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem substituto</SelectItem>
-                  {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  {membrosParaSubstituto.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
+          {erroValidacao && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+              {erroValidacao}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
@@ -476,6 +561,7 @@ export function ActividadeFormDialog({
 /* ============== Modal: Tarefa (Criar/Editar) ============== */
 export interface TarefaFormData {
   nome: string; descricao: string; inputs: string; outputs: string;
+  instrucoesNasFerramentas: boolean;
   actividadeId: string; ferramentaIds: string[]; procedimentos: { descricao: string }[];
 }
 
@@ -493,6 +579,7 @@ export function TarefaFormDialog({
 }) {
   const [form, setForm] = useState<TarefaFormData>({
     nome: '', descricao: '', inputs: '', outputs: '',
+    instrucoesNasFerramentas: false,
     actividadeId: '', ferramentaIds: [], procedimentos: [{ descricao: '' }]
   })
   const [submitting, setSubmitting] = useState(false)
@@ -508,6 +595,7 @@ export function TarefaFormDialog({
         descricao: initial?.descricao ?? '',
         inputs: initial?.inputs ?? '',
         outputs: initial?.outputs ?? '',
+        instrucoesNasFerramentas: initial?.instrucoesNasFerramentas ?? false,
         actividadeId: initial?.actividadeId ?? actividadePreselecionada ?? '',
         ferramentaIds,
         procedimentos: procs,
@@ -604,6 +692,29 @@ export function TarefaFormDialog({
               </div>
             )}
           </div>
+
+          {/* Checkbox: Instruções nas ferramentas */}
+          <div className="p-3 rounded-lg border border-border bg-muted/20">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="t-instr-ferr"
+                checked={form.instrucoesNasFerramentas}
+                onCheckedChange={(checked) => setForm(f => ({ ...f, instrucoesNasFerramentas: !!checked }))}
+                className="mt-0.5"
+              />
+              <div className="flex-1">
+                <Label htmlFor="t-instr-ferr" className="text-sm font-medium cursor-pointer">
+                  Instruções já estão implementadas nas ferramentas de trabalho
+                </Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                  Assinale se as instruções desta tarefa já se encontram disponíveis nas ferramentas onde o trabalho é executado
+                  (ex.: no Pipefy, numa aba do ficheiro Excel actualizada diariamente, etc.). Este sistema serve apenas como mapeamento —
+                  o objectivo é que as instruções estejam sempre nas ferramentas de trabalho.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1.5">
@@ -643,20 +754,18 @@ export function TarefaFormDialog({
 }
 
 /* ============== Modal: Ferramenta (Criar/Editar) ============== */
-export interface FerramentaFormData { nome: string; descricao: string; areaId: string }
+export interface FerramentaFormData { nome: string; descricao: string }
 
 export function FerramentaFormDialog({
-  open, onOpenChange, onSubmit, areas, initial, mode = 'create', lockedAreaId
+  open, onOpenChange, onSubmit, initial, mode = 'create'
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   onSubmit: (data: FerramentaFormData) => Promise<void>
-  areas: Area[]
   initial?: Ferramenta | null
   mode?: 'create' | 'edit'
-  lockedAreaId?: string
 }) {
-  const [form, setForm] = useState<FerramentaFormData>({ nome: '', descricao: '', areaId: '' })
+  const [form, setForm] = useState<FerramentaFormData>({ nome: '', descricao: '' })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -664,10 +773,9 @@ export function FerramentaFormDialog({
       setForm({
         nome: initial?.nome ?? '',
         descricao: initial?.descricao ?? '',
-        areaId: initial?.areaId ?? lockedAreaId ?? '',
       })
     }
-  }, [open, initial, lockedAreaId])
+  }, [open, initial])
 
   const submit = async () => {
     if (!form.nome.trim()) return
@@ -687,7 +795,7 @@ export function FerramentaFormDialog({
             {mode === 'edit' ? 'Editar Ferramenta' : 'Nova Ferramenta'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'edit' ? 'Actualize os dados da ferramenta.' : 'Cadastre uma ferramenta de trabalho.'}
+            {mode === 'edit' ? 'Actualize os dados da ferramenta.' : 'Cadastre uma ferramenta de trabalho. As ferramentas são globais — podem ser usadas em qualquer área da companhia.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -699,18 +807,6 @@ export function FerramentaFormDialog({
             <Label htmlFor="f-desc">Descrição</Label>
             <Textarea id="f-desc" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} />
           </div>
-          {!lockedAreaId && (
-            <div className="space-y-2">
-              <Label>Área</Label>
-              <Select value={form.areaId || 'none'} onValueChange={v => setForm({ ...form, areaId: v === 'none' ? '' : v })}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar área (opcional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem área específica</SelectItem>
-                  {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>

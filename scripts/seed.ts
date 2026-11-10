@@ -15,6 +15,19 @@ async function main() {
   await db.ferramenta.deleteMany()
   await db.area.deleteMany()
 
+  // Cria algumas ferramentas globais (sem área - podem ser usadas por toda a companhia)
+  const ferramentasPadrao = [
+    { nome: 'Outlook', descricao: 'Cliente de e-mail corporativo' },
+    { nome: 'Pipefy', descricao: 'Gestão de fluxos de trabalho e processos' },
+    { nome: 'Copilot', descricao: 'Assistente de IA para produtividade' },
+    { nome: 'Excel', descricao: 'Folhas de cálculo para análise e reportes' },
+    { nome: 'SAP', descricao: 'Sistema de gestão integrado (ERP)' },
+  ]
+  for (const f of ferramentasPadrao) {
+    await db.ferramenta.create({ data: f })
+    console.log(`  ✓ Ferramenta criada: ${f.nome}`)
+  }
+
   // === Áreas Comerciais (sob Administrador Comercial) ===
   const comercial = [
     { nome: 'Corretagem', descricao: 'Gestão de corretores e produção via canal de corretagem.', objectivos: 'Crescimento da produção via corretores; retenção de carteira.' },

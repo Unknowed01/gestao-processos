@@ -24,8 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           },
           orderBy: { nome: 'asc' },
         },
-        ferramentas: { orderBy: { nome: 'asc' } },
-        _count: { select: { processos: true, membros: true, ferramentas: true } },
+        _count: { select: { processos: true, membros: true } },
       },
     })
     if (!area) return NextResponse.json({ error: 'Área não encontrada' }, { status: 404 })

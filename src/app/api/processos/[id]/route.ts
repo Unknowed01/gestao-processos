@@ -35,8 +35,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const body = await req.json()
-    const { nome, descricao, tipo, frequencia, areaId, responsavelId, substitutoId } = body
+    const { nome, descricao, tipo, frequencia, kpis, obrigacoes, areaId, responsavelId, substitutoId } = body
     if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
+    // Validação: responsável ≠ substituto
+    if (responsavelId && substitutoId && responsavelId === substitutoId) {
+      return NextResponse.json({ error: 'O responsável e o substituto não podem ser a mesma pessoa' }, { status: 400 })
+    }
     const processo = await db.processo.update({
       where: { id },
       data: {
@@ -44,6 +48,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         descricao,
         tipo,
         frequencia,
+        kpis: kpis ?? null,
+        obrigacoes: obrigacoes ?? null,
         areaId,
         responsavelId: responsavelId || null,
         substitutoId: substitutoId || null,

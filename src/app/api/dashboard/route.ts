@@ -22,6 +22,7 @@ export async function GET() {
         nome: true,
         inputs: true,
         outputs: true,
+        instrucoesNasFerramentas: true,
         createdAt: true,
         actividade: {
           select: {
@@ -59,7 +60,7 @@ export async function GET() {
         nome: true,
         objectivos: true,
         _count: {
-          select: { processos: true, membros: true, ferramentas: true },
+          select: { processos: true, membros: true },
         },
       },
       orderBy: { nome: 'asc' },

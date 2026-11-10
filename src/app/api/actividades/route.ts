@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
     const { nome, descricao, frequencia, processoId, responsavelId, substitutoId } = body
     if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     if (!processoId) return NextResponse.json({ error: 'Processo é obrigatório' }, { status: 400 })
+    // Validação: responsável ≠ substituto
+    if (responsavelId && substitutoId && responsavelId === substitutoId) {
+      return NextResponse.json({ error: 'O responsável e o substituto não podem ser a mesma pessoa' }, { status: 400 })
+    }
 
     const actividade = await db.actividade.create({
       data: {

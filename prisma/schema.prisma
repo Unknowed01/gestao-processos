@@ -19,24 +19,25 @@ model Area {
   updatedAt   DateTime    @updatedAt
   processos   Processo[]
   membros     Membro[]
-  ferramentas Ferramenta[]
 }
 
 model Processo {
-  id           String       @id @default(cuid())
-  nome         String
-  descricao    String?
-  tipo         String       // Inbound | Outbound | Gestão
-  frequencia   String       // Diária | Semanal | Mensal | Trimestral | Semestral | Anual | Programada
-  areaId       String
-  area         Area         @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
+  nome            String
+  descricao       String?
+  tipo            String       // Inbound | Outbound | Gestão
+  frequencia      String       // Diária | Semanal | Mensal | Trimestral | Semestral | Anual | Programada
+  kpis            String?      // KPIs descritos a nível do processo (texto livre)
+  obrigacoes      String?      // Obrigações regulamentares aplicáveis ao processo (texto livre)
+  areaId          String
+  area            Area         @relation(fields: [areaId], references: [id], onDelete: Cascade)
   responsavelId   String?
-  responsavel     Membro?   @relation("ProcessoResponsavel", fields: [responsavelId], references: [id])
+  responsavel     Membro?      @relation("ProcessoResponsavel", fields: [responsavelId], references: [id])
   substitutoId    String?
-  substituto      Membro?   @relation("ProcessoSubstituto", fields: [substitutoId], references: [id])
-  actividades  Actividade[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  substituto      Membro?      @relation("ProcessoSubstituto", fields: [substitutoId], references: [id])
+  actividades     Actividade[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
 
 model Actividade {
@@ -56,17 +57,19 @@ model Actividade {
 }
 
 model Tarefa {
-  id            String        @id @default(cuid())
-  nome          String
-  descricao     String?
-  inputs        String        // Entradas necessárias
-  outputs       String        // Resultados esperados
-  actividadeId  String
-  actividade    Actividade    @relation(fields: [actividadeId], references: [id], onDelete: Cascade)
-  procedimentos Procedimento[]
-  ferramentaIds String        // IDs separados por vírgula (SQLite não suporta listas)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                       String        @id @default(cuid())
+  nome                     String
+  descricao                String?
+  inputs                   String        // Entradas necessárias
+  outputs                  String        // Resultados esperados
+  instrucoesNasFerramentas Boolean       @default(false) // Indica se as instruções já estão implementadas nas ferramentas de trabalho
+  actividadeId             String
+  actividade               Actividade    @relation(fields: [actividadeId], references: [id], onDelete: Cascade)
+  procedimentos            Procedimento[]
+  ferramentaIds            String        // IDs separados por vírgula (SQLite não suporta listas)
+  dataRevisao              DateTime      @default(now()) // Actualizada automaticamente em cada modificação (não editável manualmente)
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
 }
 
 model Procedimento {
@@ -99,8 +102,6 @@ model Ferramenta {
   id        String   @id @default(cuid())
   nome      String
   descricao String?
-  areaId    String?
-  area      Area?    @relation(fields: [areaId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

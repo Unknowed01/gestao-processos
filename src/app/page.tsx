@@ -337,7 +337,7 @@ export default function Home() {
   const handleEditTarefa = async (data: TarefaFormData) => {
     if (!editTarefa) return
     try {
-      // Atualiza a tarefa (sem procedimentos - eles são tratados em separado)
+      // PUT envia todos os campos, incluindo procedimentos (a API elimina os antigos e cria os novos)
       await fetcher(`/api/tarefas/${editTarefa.id}`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -345,12 +345,12 @@ export default function Home() {
           descricao: data.descricao,
           inputs: data.inputs,
           outputs: data.outputs,
+          instrucoesNasFerramentas: data.instrucoesNasFerramentas,
           actividadeId: data.actividadeId,
-          ferramentaIds: data.ferramentaIds.join(','),
+          ferramentaIds: data.ferramentaIds,
+          procedimentos: data.procedimentos,
         })
       })
-      // TODO: actualizar procedimentos (por simplicidade, elimina e recria)
-      // Para já, apenas actualizamos os campos básicos
       toast.success('Tarefa actualizada!')
       setEditTarefa(null)
       await loadDashboard()
@@ -544,8 +544,6 @@ export default function Home() {
               onDeleteProcesso={(p) => askDelete('processo', p.id, p.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
               onEditMembro={(m) => setEditMembro(m)}
               onDeleteMembro={(m) => askDelete('membro', m.id, m.nome)}
-              onEditFerramenta={(f) => setEditFerramenta(f)}
-              onDeleteFerramenta={(f) => askDelete('ferramenta', f.id, f.nome)}
             />
           )}
 
@@ -675,8 +673,6 @@ export default function Home() {
         open={ferramentaModal}
         onOpenChange={setFerramentaModal}
         onSubmit={handleCreateFerramenta}
-        areas={areas}
-        lockedAreaId={view.level === 'area' ? view.areaId : undefined}
       />
 
       {/* Modais - Editar */}
@@ -738,7 +734,6 @@ export default function Home() {
           open={true}
           onOpenChange={(o) => !o && setEditFerramenta(null)}
           onSubmit={handleEditFerramenta}
-          areas={areas}
           initial={editFerramenta}
           mode="edit"
         />
@@ -914,11 +909,6 @@ function FerramentasListView({
                 </div>
                 <h3 className="font-medium text-sm truncate">{f.nome}</h3>
                 {f.descricao && <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{f.descricao}</p>}
-                {f.area && (
-                  <Badge variant="outline" className="mt-2 text-[10px] py-0">
-                    <Building2 className="w-2.5 h-2.5 mr-1" />{f.area.nome}
-                  </Badge>
-                )}
               </CardContent>
               <div className="absolute top-2 right-2 z-10">
                 <ActionMenu onEdit={() => onEdit(f)} onDelete={() => onDelete(f)} />

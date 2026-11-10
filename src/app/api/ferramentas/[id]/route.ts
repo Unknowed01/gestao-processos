@@ -5,10 +5,7 @@ import { db } from '@/lib/db'
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const ferramenta = await db.ferramenta.findUnique({
-      where: { id },
-      include: { area: { select: { id: true, nome: true } } },
-    })
+    const ferramenta = await db.ferramenta.findUnique({ where: { id } })
     if (!ferramenta) return NextResponse.json({ error: 'Ferramenta não encontrada' }, { status: 404 })
     return NextResponse.json(ferramenta)
   } catch (error) {
@@ -22,14 +19,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const body = await req.json()
-    const { nome, descricao, areaId } = body
+    const { nome, descricao } = body
     if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     const ferramenta = await db.ferramenta.update({
       where: { id },
       data: {
         nome: nome.trim(),
         descricao,
-        areaId: areaId || null,
       },
     })
     return NextResponse.json(ferramenta)

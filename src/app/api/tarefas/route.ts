@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, descricao, inputs, outputs, actividadeId, ferramentaIds, procedimentos } = body
+    const {
+      nome, descricao, inputs, outputs, actividadeId, ferramentaIds, procedimentos,
+      instrucoesNasFerramentas
+    } = body
     if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     if (!actividadeId) return NextResponse.json({ error: 'Actividade é obrigatória' }, { status: 400 })
 
@@ -45,8 +48,10 @@ export async function POST(req: NextRequest) {
         descricao: descricao || null,
         inputs: inputs || '',
         outputs: outputs || '',
+        instrucoesNasFerramentas: !!instrucoesNasFerramentas,
         actividadeId,
         ferramentaIds: Array.isArray(ferramentaIds) ? ferramentaIds.join(',') : (ferramentaIds || ''),
+        // dataRevisao é definida automaticamente pelo @default(now())
         procedimentos: {
           create: Array.isArray(procedimentos)
             ? procedimentos

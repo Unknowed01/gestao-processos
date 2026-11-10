@@ -7,14 +7,13 @@ export interface Area {
   objectivos?: string | null
   createdAt: string
   updatedAt: string
-  _count?: { processos: number; membros: number; ferramentas: number }
+  _count?: { processos: number; membros: number }
 }
 
 // Área com detalhes completos (visão de detalhe)
 export interface AreaDetalhe extends Area {
   processos?: Processo[]
   membros?: Membro[]
-  ferramentas?: Ferramenta[]
 }
 
 export interface Membro {
@@ -40,6 +39,8 @@ export interface Processo {
   descricao?: string | null
   tipo: string
   frequencia: string
+  kpis?: string | null
+  obrigacoes?: string | null
   areaId: string
   area?: { id: string; nome: string } | null
   responsavelId?: string | null
@@ -86,6 +87,7 @@ export interface Tarefa {
   descricao?: string | null
   inputs: string
   outputs: string
+  instrucoesNasFerramentas: boolean
   ferramentaIds: string
   actividadeId: string
   actividade?: {
@@ -100,6 +102,7 @@ export interface Tarefa {
   } | null
   procedimentos?: Procedimento[]
   _count?: { procedimentos: number }
+  dataRevisao: string
   createdAt: string
   updatedAt: string
 }
@@ -108,8 +111,6 @@ export interface Ferramenta {
   id: string
   nome: string
   descricao?: string | null
-  areaId?: string | null
-  area?: { id: string; nome: string } | null
   createdAt: string
 }
 
@@ -127,6 +128,7 @@ export interface DashboardData {
     nome: string
     inputs: string
     outputs: string
+    instrucoesNasFerramentas: boolean
     createdAt: string
     actividade: {
       id: string
@@ -188,4 +190,16 @@ export const AREA_COLORS = [
 
 export function getAreaColor(index: number) {
   return AREA_COLORS[index % AREA_COLORS.length]
+}
+
+// Formata data de revisão de forma subtil e relativa
+export function formatDataRevisao(dataIso: string): string {
+  const data = new Date(dataIso)
+  return data.toLocaleDateString('pt-PT', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
