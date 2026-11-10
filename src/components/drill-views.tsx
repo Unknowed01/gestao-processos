@@ -1,23 +1,24 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { toast } from 'sonner'
 import {
   ChevronRight, Plus, Trash2, Loader2, Mail, Building2, Workflow,
   Activity, ListChecks, Users, Wrench, Target, ArrowLeft, UserCheck,
-  ArrowDownToLine, ArrowUpFromLine, ListOrdered, ChevronLeft, Calendar,
-  CircleDot
+  ArrowDownToLine, ArrowUpFromLine, ListOrdered, Calendar, CircleDot,
+  Pencil, MoreVertical
 } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+import {
   Area, AreaDetalhe, Membro, Processo, Actividade, Tarefa, Ferramenta,
-  TIPO_COLORS, TIPO_DOT, FREQ_COLORS, getAreaColor
+  TIPO_COLORS, TIPO_DOT, FREQ_COLORS
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -60,101 +61,11 @@ export function DrillBreadcrumb({
   )
 }
 
-/* ============== Lista de Áreas (grid de cartões) ============== */
-export function AreasGridView({
-  areas, loading, onOpenArea, onCreateArea, canCreate
-}: {
-  areas: Area[]
-  loading: boolean
-  onOpenArea: (id: string) => void
-  onCreateArea: () => void
-  canCreate?: boolean
-}) {
-  const [search, setSearch] = useState('')
-  const filtered = areas.filter(a =>
-    a.nome.toLowerCase().includes(search.toLowerCase()) ||
-    a.descricao?.toLowerCase().includes(search.toLowerCase())
-  )
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Áreas</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Seleccione uma área para ver os seus processos, membros, ferramentas e objectivos.
-          </p>
-        </div>
-        {canCreate && (
-          <Button onClick={onCreateArea}>
-            <Plus className="w-4 h-4 mr-2" /> Nova Área
-          </Button>
-        )}
-      </div>
-
-      <div className="relative max-w-md">
-        <Input
-          placeholder="Pesquisar área..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-3"
-        />
-      </div>
-
-      {loading ? (
-        <div className="flex flex-col items-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">A carregar áreas...</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <Building2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <h3 className="font-semibold text-sm">Nenhuma área encontrada</h3>
-            <p className="text-xs text-muted-foreground mt-1">Tente outro termo ou crie uma nova área.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((area, idx) => {
-            const color = getAreaColor(idx)
-            return (
-              <button
-                key={area.id}
-                onClick={() => onOpenArea(area.id)}
-                className="group text-left"
-              >
-                <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shadow-sm", color.icon)}>
-                        <Building2 className="w-5 h-5 text-white" />
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                    <h3 className="font-semibold text-sm leading-tight mb-1">{area.nome}</h3>
-                    {area.descricao && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{area.descricao}</p>
-                    )}
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-3 border-t border-border">
-                      <span className="flex items-center gap-1"><Workflow className="w-3 h-3" />{area._count?.processos ?? 0}</span>
-                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{area._count?.membros ?? 0}</span>
-                      <span className="flex items-center gap-1"><Wrench className="w-3 h-3" />{area._count?.ferramentas ?? 0}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
 /* ============== Detalhe de Área ============== */
 export function AreaDetailView({
-  areaId, area, loading, onOpenProcesso, onBack, onRefresh
+  areaId, area, loading, onOpenProcesso, onBack, onRefresh,
+  onEditArea, onDeleteArea, onEditProcesso, onDeleteProcesso,
+  onEditMembro, onDeleteMembro, onEditFerramenta, onDeleteFerramenta
 }: {
   areaId: string
   area: AreaDetalhe | null
@@ -162,6 +73,14 @@ export function AreaDetailView({
   onOpenProcesso: (id: string) => void
   onBack: () => void
   onRefresh: () => void
+  onEditArea: () => void
+  onDeleteArea: () => void
+  onEditProcesso: (p: Processo) => void
+  onDeleteProcesso: (p: Processo) => void
+  onEditMembro: (m: Membro) => void
+  onDeleteMembro: (m: Membro) => void
+  onEditFerramenta: (f: Ferramenta) => void
+  onDeleteFerramenta: (f: Ferramenta) => void
 }) {
   const [search, setSearch] = useState('')
   const processos = area?.processos ?? []
@@ -199,9 +118,9 @@ export function AreaDetailView({
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{area.nome}</h1>
           {area.descricao && <p className="text-muted-foreground mt-1 text-sm max-w-3xl">{area.descricao}</p>}
         </div>
+        <EntityMenu onEdit={onEditArea} onDelete={onDeleteArea} />
       </div>
 
-      {/* Tabs: Processos | Equipa | Ferramentas | Objectivos */}
       <Tabs defaultValue="processos">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-xl">
           <TabsTrigger value="processos" className="text-xs sm:text-sm">
@@ -244,7 +163,13 @@ export function AreaDetailView({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filteredProcessos.map((p) => (
-                <ProcessoCard key={p.id} processo={p} onClick={() => onOpenProcesso(p.id)} />
+                <ProcessoCard
+                  key={p.id}
+                  processo={p}
+                  onClick={() => onOpenProcesso(p.id)}
+                  onEdit={() => onEditProcesso(p)}
+                  onDelete={() => onDeleteProcesso(p)}
+                />
               ))}
             </div>
           )}
@@ -261,46 +186,14 @@ export function AreaDetailView({
             </Card>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {membros.map((m) => {
-                const iniciais = m.nome.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
-                const totalResp = (m._count?.procResp ?? 0) + (m._count?.actResp ?? 0)
-                const totalSub = (m._count?.procSubst ?? 0) + (m._count?.actSubst ?? 0)
-                return (
-                  <Card key={m.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-xs flex-shrink-0">
-                          {iniciais}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm truncate">{m.nome}</h3>
-                          {m.cargo && <p className="text-xs text-muted-foreground truncate">{m.cargo}</p>}
-                          {m.email && (
-                            <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
-                              <Mail className="w-3 h-3" />
-                              <span className="truncate">{m.email}</span>
-                            </div>
-                          )}
-                          {(totalResp > 0 || totalSub > 0) && (
-                            <div className="flex items-center gap-2 mt-2 text-[10px]">
-                              {totalResp > 0 && (
-                                <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50">
-                                  <UserCheck className="w-2.5 h-2.5 mr-0.5" />{totalResp} resp.
-                                </Badge>
-                              )}
-                              {totalSub > 0 && (
-                                <Badge variant="outline" className="text-[10px] py-0 bg-amber-50">
-                                  {totalSub} substit.
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+              {membros.map((m) => (
+                <MembroCard
+                  key={m.id}
+                  membro={m}
+                  onEdit={() => onEditMembro(m)}
+                  onDelete={() => onDeleteMembro(m)}
+                />
+              ))}
             </div>
           )}
         </TabsContent>
@@ -317,15 +210,12 @@ export function AreaDetailView({
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {ferramentas.map((f) => (
-                <Card key={f.id}>
-                  <CardContent className="p-4">
-                    <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center mb-2">
-                      <Wrench className="w-4 h-4 text-teal-600" />
-                    </div>
-                    <h3 className="font-medium text-sm truncate">{f.nome}</h3>
-                    {f.descricao && <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{f.descricao}</p>}
-                  </CardContent>
-                </Card>
+                <FerramentaCard
+                  key={f.id}
+                  ferramenta={f}
+                  onEdit={() => onEditFerramenta(f)}
+                  onDelete={() => onDeleteFerramenta(f)}
+                />
               ))}
             </div>
           )}
@@ -355,57 +245,148 @@ export function AreaDetailView({
   )
 }
 
-/* ============== Card de Processo (reutilizável) ============== */
-function ProcessoCard({ processo, onClick }: { processo: Processo; onClick: () => void }) {
+/* ============== Card de Processo ============== */
+function ProcessoCard({
+  processo, onClick, onEdit, onDelete
+}: {
+  processo: Processo
+  onClick: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
   return (
-    <button onClick={onClick} className="group text-left">
-      <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge variant="outline" className={cn("text-[10px] py-0", TIPO_COLORS[processo.tipo])}>
-                <span className={cn("w-1.5 h-1.5 rounded-full mr-1", TIPO_DOT[processo.tipo])} />
-                {processo.tipo}
-              </Badge>
-              <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[processo.frequencia])}>
-                <Calendar className="w-2.5 h-2.5 mr-0.5" />{processo.frequencia}
-              </Badge>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </div>
-          <CardTitle className="text-sm mt-2 leading-tight">{processo.nome}</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 space-y-2">
-          {processo.descricao && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{processo.descricao}</p>
-          )}
-          <Separator />
-          <div className="flex items-center justify-between text-[11px]">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <UserCheck className="w-3 h-3" />
-                <span className="truncate max-w-[80px]">{processo.responsavel?.nome || '—'}</span>
+    <div className="group relative">
+      <button onClick={onClick} className="group/card text-left w-full">
+        <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+          <CardHeader className="pb-2 pr-10">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className={cn("text-[10px] py-0", TIPO_COLORS[processo.tipo])}>
+                  <span className={cn("w-1.5 h-1.5 rounded-full mr-1", TIPO_DOT[processo.tipo])} />
+                  {processo.tipo}
+                </Badge>
+                <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[processo.frequencia])}>
+                  <Calendar className="w-2.5 h-2.5 mr-0.5" />{processo.frequencia}
+                </Badge>
               </div>
             </div>
-            <Badge variant="secondary" className="text-[10px] py-0">
-              {processo._count?.actividades ?? 0} act.
-            </Badge>
+            <CardTitle className="text-sm mt-2 leading-tight">{processo.nome}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            {processo.descricao && (
+              <p className="text-xs text-muted-foreground line-clamp-2">{processo.descricao}</p>
+            )}
+            <Separator />
+            <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <UserCheck className="w-3 h-3" />
+                  <span className="truncate max-w-[80px]">{processo.responsavel?.nome || '—'}</span>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-[10px] py-0">
+                {processo._count?.actividades ?? 0} act.
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </button>
+      <div className="absolute top-2 right-2 z-10">
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} small />
+      </div>
+    </div>
+  )
+}
+
+/* ============== Card de Membro ============== */
+function MembroCard({
+  membro, onEdit, onDelete
+}: {
+  membro: Membro
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const iniciais = membro.nome.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
+  const totalResp = (membro._count?.procResp ?? 0) + (membro._count?.actResp ?? 0)
+  const totalSub = (membro._count?.procSubst ?? 0) + (membro._count?.actSubst ?? 0)
+  return (
+    <Card className="group relative">
+      <CardContent className="p-4 pr-10">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-xs flex-shrink-0">
+            {iniciais}
           </div>
-        </CardContent>
-      </Card>
-    </button>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm truncate">{membro.nome}</h3>
+            {membro.cargo && <p className="text-xs text-muted-foreground truncate">{membro.cargo}</p>}
+            {membro.email && (
+              <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
+                <Mail className="w-3 h-3" />
+                <span className="truncate">{membro.email}</span>
+              </div>
+            )}
+            {(totalResp > 0 || totalSub > 0) && (
+              <div className="flex items-center gap-2 mt-2 text-[10px]">
+                {totalResp > 0 && (
+                  <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50">
+                    <UserCheck className="w-2.5 h-2.5 mr-0.5" />{totalResp} resp.
+                  </Badge>
+                )}
+                {totalSub > 0 && (
+                  <Badge variant="outline" className="text-[10px] py-0 bg-amber-50">
+                    {totalSub} substit.
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+      <div className="absolute top-2 right-2 z-10">
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} small />
+      </div>
+    </Card>
+  )
+}
+
+/* ============== Card de Ferramenta ============== */
+function FerramentaCard({
+  ferramenta, onEdit, onDelete
+}: {
+  ferramenta: Ferramenta
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <Card className="group relative">
+      <CardContent className="p-4 pr-10">
+        <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center mb-2">
+          <Wrench className="w-4 h-4 text-teal-600" />
+        </div>
+        <h3 className="font-medium text-sm truncate">{ferramenta.nome}</h3>
+        {ferramenta.descricao && <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{ferramenta.descricao}</p>}
+      </CardContent>
+      <div className="absolute top-2 right-2 z-10">
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} small />
+      </div>
+    </Card>
   )
 }
 
 /* ============== Detalhe de Processo ============== */
 export function ProcessoDetailView({
-  processo, loading, onOpenActividade, onBack, areaName
+  processo, loading, onOpenActividade, onBack, areaName,
+  onEdit, onDelete, onEditActividade, onDeleteActividade
 }: {
-  processo: Processo & { actividades?: Actividade[]; _count?: { actividades: number } } | null
+  processo: (Processo & { actividades?: Actividade[] }) | null
   loading: boolean
   onOpenActividade: (id: string) => void
   onBack: () => void
   areaName?: string
+  onEdit: () => void
+  onDelete: () => void
+  onEditActividade: (a: Actividade) => void
+  onDeleteActividade: (a: Actividade) => void
 }) {
   const actividades = processo?.actividades ?? []
 
@@ -423,7 +404,6 @@ export function ProcessoDetailView({
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
           <ArrowLeft className="w-5 h-5" />
@@ -445,9 +425,9 @@ export function ProcessoDetailView({
           </div>
           {processo.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{processo.descricao}</p>}
         </div>
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} />
       </div>
 
-      {/* Responsáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -475,7 +455,6 @@ export function ProcessoDetailView({
         </Card>
       </div>
 
-      {/* Actividades */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold flex items-center gap-2">
@@ -494,7 +473,13 @@ export function ProcessoDetailView({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {actividades.map((a) => (
-              <ActividadeCard key={a.id} actividade={a} onClick={() => onOpenActividade(a.id)} />
+              <ActividadeCard
+                key={a.id}
+                actividade={a}
+                onClick={() => onOpenActividade(a.id)}
+                onEdit={() => onEditActividade(a)}
+                onDelete={() => onDeleteActividade(a)}
+              />
             ))}
           </div>
         )}
@@ -504,48 +489,64 @@ export function ProcessoDetailView({
 }
 
 /* ============== Card de Actividade ============== */
-function ActividadeCard({ actividade, onClick }: { actividade: Actividade; onClick: () => void }) {
+function ActividadeCard({
+  actividade, onClick, onEdit, onDelete
+}: {
+  actividade: Actividade
+  onClick: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
   return (
-    <button onClick={onClick} className="group text-left">
-      <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[actividade.frequencia])}>
-              <Calendar className="w-2.5 h-2.5 mr-0.5" />{actividade.frequencia}
-            </Badge>
-            <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </div>
-          <CardTitle className="text-sm mt-2 leading-tight">{actividade.nome}</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0 space-y-2">
-          {actividade.descricao && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{actividade.descricao}</p>
-          )}
-          <Separator />
-          <div className="flex items-center justify-between text-[11px]">
-            <div className="flex items-center gap-1 text-muted-foreground min-w-0">
-              <UserCheck className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate">{actividade.responsavel?.nome || '—'}</span>
+    <div className="group relative">
+      <button onClick={onClick} className="group/card text-left w-full">
+        <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+          <CardHeader className="pb-2 pr-10">
+            <div className="flex items-start justify-between gap-2">
+              <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[actividade.frequencia])}>
+                <Calendar className="w-2.5 h-2.5 mr-0.5" />{actividade.frequencia}
+              </Badge>
             </div>
-            <Badge variant="secondary" className="text-[10px] py-0">
-              {actividade._count?.tarefas ?? 0} tarefas
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-    </button>
+            <CardTitle className="text-sm mt-2 leading-tight">{actividade.nome}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            {actividade.descricao && (
+              <p className="text-xs text-muted-foreground line-clamp-2">{actividade.descricao}</p>
+            )}
+            <Separator />
+            <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-1 text-muted-foreground min-w-0">
+                <UserCheck className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{actividade.responsavel?.nome || '—'}</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px] py-0">
+                {actividade._count?.tarefas ?? 0} tarefas
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </button>
+      <div className="absolute top-2 right-2 z-10">
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} small />
+      </div>
+    </div>
   )
 }
 
 /* ============== Detalhe de Actividade ============== */
 export function ActividadeDetailView({
-  actividade, loading, onOpenTarefa, onBack, processoName
+  actividade, loading, onOpenTarefa, onBack, processoName,
+  onEdit, onDelete, onEditTarefa, onDeleteTarefa
 }: {
   actividade: (Actividade & { tarefas?: Tarefa[] }) | null
   loading: boolean
   onOpenTarefa: (id: string) => void
   onBack: () => void
   processoName?: string
+  onEdit: () => void
+  onDelete: () => void
+  onEditTarefa: (t: Tarefa) => void
+  onDeleteTarefa: (t: Tarefa) => void
 }) {
   const tarefas = actividade?.tarefas ?? []
 
@@ -563,7 +564,6 @@ export function ActividadeDetailView({
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
           <ArrowLeft className="w-5 h-5" />
@@ -581,9 +581,9 @@ export function ActividadeDetailView({
           </div>
           {actividade.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{actividade.descricao}</p>}
         </div>
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} />
       </div>
 
-      {/* Responsáveis */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
@@ -609,7 +609,6 @@ export function ActividadeDetailView({
         </Card>
       </div>
 
-      {/* Tarefas */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold flex items-center gap-2">
@@ -628,7 +627,13 @@ export function ActividadeDetailView({
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {tarefas.map((t) => (
-              <TarefaCard key={t.id} tarefa={t} onClick={() => onOpenTarefa(t.id)} />
+              <TarefaCard
+                key={t.id}
+                tarefa={t}
+                onClick={() => onOpenTarefa(t.id)}
+                onEdit={() => onEditTarefa(t)}
+                onDelete={() => onDeleteTarefa(t)}
+              />
             ))}
           </div>
         )}
@@ -638,55 +643,67 @@ export function ActividadeDetailView({
 }
 
 /* ============== Card de Tarefa ============== */
-function TarefaCard({ tarefa, onClick }: { tarefa: Tarefa; onClick: () => void }) {
+function TarefaCard({
+  tarefa, onClick, onEdit, onDelete
+}: {
+  tarefa: Tarefa
+  onClick: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
   const numPassos = tarefa.procedimentos?.length ?? tarefa._count?.procedimentos ?? 0
   return (
-    <button onClick={onClick} className="group text-left">
-      <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-sm flex items-center gap-2 leading-tight">
-              <ListChecks className="w-4 h-4 text-sky-500 flex-shrink-0" />
-              <span className="truncate">{tarefa.nome}</span>
-            </CardTitle>
-            <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 uppercase mb-0.5">
-                <ArrowDownToLine className="w-3 h-3" /> Inputs
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-2">{tarefa.inputs || '—'}</p>
+    <div className="group relative">
+      <button onClick={onClick} className="group/card text-left w-full">
+        <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+          <CardHeader className="pb-2 pr-10">
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-sm flex items-center gap-2 leading-tight">
+                <ListChecks className="w-4 h-4 text-sky-500 flex-shrink-0" />
+                <span className="truncate">{tarefa.nome}</span>
+              </CardTitle>
             </div>
-            <div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-orange-700 uppercase mb-0.5">
-                <ArrowUpFromLine className="w-3 h-3" /> Outputs
+          </CardHeader>
+          <CardContent className="pt-0 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 uppercase mb-0.5">
+                  <ArrowDownToLine className="w-3 h-3" /> Inputs
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2">{tarefa.inputs || '—'}</p>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-2">{tarefa.outputs || '—'}</p>
+              <div>
+                <div className="flex items-center gap-1 text-[10px] font-semibold text-orange-700 uppercase mb-0.5">
+                  <ArrowUpFromLine className="w-3 h-3" /> Outputs
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2">{tarefa.outputs || '—'}</p>
+              </div>
             </div>
-          </div>
-          <Separator />
-          <div className="flex items-center gap-2 text-[11px]">
-            <Badge variant="outline" className="text-[10px] py-0">
-              <ListOrdered className="w-2.5 h-2.5 mr-1" />{numPassos} passos
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-    </button>
+            <Separator />
+            <div className="flex items-center gap-2 text-[11px]">
+              <Badge variant="outline" className="text-[10px] py-0">
+                <ListOrdered className="w-2.5 h-2.5 mr-1" />{numPassos} passos
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </button>
+      <div className="absolute top-2 right-2 z-10">
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} small />
+      </div>
+    </div>
   )
 }
 
 /* ============== Detalhe de Tarefa ============== */
 export function TarefaDetailView({
-  tarefa, loading, onBack, ferramentas, onDelete
+  tarefa, loading, onBack, ferramentas, onEdit, onDelete
 }: {
   tarefa: (Tarefa & { procedimentos?: { id: string; passo: number; descricao: string }[] }) | null
   loading: boolean
   onBack: () => void
   ferramentas: Ferramenta[]
+  onEdit: () => void
   onDelete: () => void
 }) {
   if (loading && !tarefa) {
@@ -706,7 +723,6 @@ export function TarefaDetailView({
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-start gap-4">
         <Button variant="ghost" size="icon" onClick={onBack} className="flex-shrink-0">
           <ArrowLeft className="w-5 h-5" />
@@ -721,12 +737,9 @@ export function TarefaDetailView({
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{tarefa.nome}</h1>
           {tarefa.descricao && <p className="text-muted-foreground mt-2 text-sm max-w-3xl">{tarefa.descricao}</p>}
         </div>
-        <Button variant="ghost" size="icon" onClick={onDelete} className="text-muted-foreground hover:text-destructive flex-shrink-0">
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        <EntityMenu onEdit={onEdit} onDelete={onDelete} />
       </div>
 
-      {/* Inputs e Outputs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="border-emerald-200 bg-emerald-50/50">
           <CardHeader className="pb-2">
@@ -752,7 +765,6 @@ export function TarefaDetailView({
         </Card>
       </div>
 
-      {/* Ferramentas */}
       {ferramentasUsadas.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -773,7 +785,6 @@ export function TarefaDetailView({
         </Card>
       )}
 
-      {/* Procedimentos */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -802,5 +813,42 @@ export function TarefaDetailView({
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+/* ============== Menu de acções (Editar/Eliminar) ============== */
+function EntityMenu({
+  onEdit, onDelete, small
+}: {
+  onEdit: () => void
+  onDelete: () => void
+  small?: boolean
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className={cn(
+            "flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
+            small ? "w-7 h-7 opacity-0 group-hover:opacity-100" : "w-9 h-9"
+          )}
+          aria-label="Mais acções"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreVertical className={small ? "w-3.5 h-3.5" : "w-4 h-4"} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={onEdit}>
+          <Pencil className="w-3.5 h-3.5 mr-2" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+          <Trash2 className="w-3.5 h-3.5 mr-2" />
+          Eliminar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

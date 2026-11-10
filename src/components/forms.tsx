@@ -9,28 +9,41 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/* ============== Modal: Criar Área ============== */
+/* ============== Modal: Área (Criar/Editar) ============== */
+export interface AreaFormData { nome: string; descricao: string; objectivos: string }
+
 export function AreaFormDialog({
-  open, onOpenChange, onSubmit
+  open, onOpenChange, onSubmit, initial, mode = 'create'
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSubmit: (data: { nome: string; descricao: string; objectivos: string }) => Promise<void>
+  onSubmit: (data: AreaFormData) => Promise<void>
+  initial?: Area | null
+  mode?: 'create' | 'edit'
 }) {
-  const [form, setForm] = useState({ nome: '', descricao: '', objectivos: '' })
+  const [form, setForm] = useState<AreaFormData>({ nome: '', descricao: '', objectivos: '' })
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        nome: initial?.nome ?? '',
+        descricao: initial?.descricao ?? '',
+        objectivos: initial?.objectivos ?? '',
+      })
+    }
+  }, [open, initial])
 
   const submit = async () => {
     if (!form.nome.trim()) return
     setSubmitting(true)
     try {
       await onSubmit(form)
-      setForm({ nome: '', descricao: '', objectivos: '' })
       onOpenChange(false)
     } finally { setSubmitting(false) }
   }
@@ -40,9 +53,12 @@ export function AreaFormDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" /> Nova Área
+            <Building2 className="w-5 h-5 text-primary" />
+            {mode === 'edit' ? 'Editar Área' : 'Nova Área'}
           </DialogTitle>
-          <DialogDescription>Crie uma nova área organizacional.</DialogDescription>
+          <DialogDescription>
+            {mode === 'edit' ? 'Actualize os dados da área.' : 'Crie uma nova área organizacional.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -61,7 +77,8 @@ export function AreaFormDialog({
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim()}>
-            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Criar Área
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {mode === 'edit' ? 'Guardar' : 'Criar Área'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -69,24 +86,39 @@ export function AreaFormDialog({
   )
 }
 
-/* ============== Modal: Criar Membro ============== */
+/* ============== Modal: Membro (Criar/Editar) ============== */
+export interface MembroFormData { nome: string; email: string; cargo: string; areaId: string }
+
 export function MembroFormDialog({
-  open, onOpenChange, onSubmit, areas
+  open, onOpenChange, onSubmit, areas, initial, mode = 'create', lockedAreaId
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSubmit: (data: { nome: string; email: string; cargo: string; areaId: string }) => Promise<void>
+  onSubmit: (data: MembroFormData) => Promise<void>
   areas: Area[]
+  initial?: Membro | null
+  mode?: 'create' | 'edit'
+  lockedAreaId?: string // quando definido, área fica fixa e oculta
 }) {
-  const [form, setForm] = useState({ nome: '', email: '', cargo: '', areaId: '' })
+  const [form, setForm] = useState<MembroFormData>({ nome: '', email: '', cargo: '', areaId: '' })
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        nome: initial?.nome ?? '',
+        email: initial?.email ?? '',
+        cargo: initial?.cargo ?? '',
+        areaId: initial?.areaId ?? lockedAreaId ?? '',
+      })
+    }
+  }, [open, initial, lockedAreaId])
 
   const submit = async () => {
     if (!form.nome.trim()) return
     setSubmitting(true)
     try {
       await onSubmit(form)
-      setForm({ nome: '', email: '', cargo: '', areaId: '' })
       onOpenChange(false)
     } finally { setSubmitting(false) }
   }
@@ -96,9 +128,12 @@ export function MembroFormDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" /> Novo Membro da Equipa
+            <UserPlus className="w-5 h-5 text-primary" />
+            {mode === 'edit' ? 'Editar Membro' : 'Novo Membro da Equipa'}
           </DialogTitle>
-          <DialogDescription>Adicione um membro que poderá ser atribuído como responsável ou substituto.</DialogDescription>
+          <DialogDescription>
+            {mode === 'edit' ? 'Actualize os dados do membro.' : 'Adicione um membro que poderá ser atribuído como responsável ou substituto.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -115,21 +150,24 @@ export function MembroFormDialog({
               <Input id="m-cargo" value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} placeholder="Ex: Analista" />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="m-area">Área</Label>
-            <Select value={form.areaId || 'none'} onValueChange={v => setForm({ ...form, areaId: v === 'none' ? '' : v })}>
-              <SelectTrigger id="m-area"><SelectValue placeholder="Seleccionar área (opcional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem área específica</SelectItem>
-                {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {!lockedAreaId && (
+            <div className="space-y-2">
+              <Label htmlFor="m-area">Área</Label>
+              <Select value={form.areaId || 'none'} onValueChange={v => setForm({ ...form, areaId: v === 'none' ? '' : v })}>
+                <SelectTrigger id="m-area"><SelectValue placeholder="Seleccionar área (opcional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem área específica</SelectItem>
+                  {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim()}>
-            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Criar Membro
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {mode === 'edit' ? 'Guardar' : 'Criar Membro'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -137,38 +175,68 @@ export function MembroFormDialog({
   )
 }
 
-/* ============== Modal: Criar Processo ============== */
+/* ============== Modal: Processo (Criar/Editar) ============== */
+export interface ProcessoFormData {
+  nome: string; descricao: string; tipo: string; frequencia: string;
+  areaId: string; responsavelId: string; substitutoId: string;
+}
+
 export function ProcessoFormDialog({
-  open, onOpenChange, onSubmit, areas, membros, areaPreselecionada
+  open, onOpenChange, onSubmit, areas, membros, initial, mode = 'create', areaPreselecionada
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSubmit: (data: { nome: string; descricao: string; tipo: string; frequencia: string; areaId: string; responsavelId: string; substitutoId: string }) => Promise<void>
+  onSubmit: (data: ProcessoFormData) => Promise<void>
   areas: Area[]
   membros: Membro[]
+  initial?: Processo | null
+  mode?: 'create' | 'edit'
   areaPreselecionada?: string
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProcessoFormData>({
     nome: '', descricao: '', tipo: 'Inbound', frequencia: 'Mensal',
-    areaId: areaPreselecionada || '', responsavelId: '', substitutoId: ''
+    areaId: '', responsavelId: '', substitutoId: ''
   })
   const [submitting, setSubmitting] = useState(false)
 
-  // Quando o dialog abre ou areaPreselecionada muda, actualiza o form
   useEffect(() => {
-    if (open && areaPreselecionada) {
-      setForm(f => ({ ...f, areaId: areaPreselecionada }))
+    if (open) {
+      setForm({
+        nome: initial?.nome ?? '',
+        descricao: initial?.descricao ?? '',
+        tipo: initial?.tipo ?? 'Inbound',
+        frequencia: initial?.frequencia ?? 'Mensal',
+        areaId: initial?.areaId ?? areaPreselecionada ?? '',
+        responsavelId: initial?.responsavelId ?? '',
+        substitutoId: initial?.substitutoId ?? '',
+      })
     }
-  }, [open, areaPreselecionada])
+  }, [open, initial, areaPreselecionada])
+
+  // Filtra membros pela área seleccionada no formulário
+  const membrosFiltrados = useMemo(() => {
+    if (!form.areaId) return membros
+    return membros.filter(m => m.areaId === form.areaId)
+  }, [membros, form.areaId])
 
   const submit = async () => {
     if (!form.nome.trim() || !form.areaId) return
     setSubmitting(true)
     try {
       await onSubmit(form)
-      setForm({ nome: '', descricao: '', tipo: 'Inbound', frequencia: 'Mensal', areaId: areaPreselecionada || '', responsavelId: '', substitutoId: '' })
       onOpenChange(false)
     } finally { setSubmitting(false) }
+  }
+
+  // Quando muda a área, limpa responsável/substituto se não pertencerem à área
+  const handleAreaChange = (v: string) => {
+    const newAreaId = v === 'none' ? '' : v
+    setForm(f => ({
+      ...f,
+      areaId: newAreaId,
+      responsavelId: f.responsavelId && !membros.some(m => m.id === f.responsavelId && m.areaId === newAreaId) ? '' : f.responsavelId,
+      substitutoId: f.substitutoId && !membros.some(m => m.id === f.substitutoId && m.areaId === newAreaId) ? '' : f.substitutoId,
+    }))
   }
 
   return (
@@ -176,9 +244,12 @@ export function ProcessoFormDialog({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Workflow className="w-5 h-5 text-primary" /> Novo Processo
+            <Workflow className="w-5 h-5 text-primary" />
+            {mode === 'edit' ? 'Editar Processo' : 'Novo Processo'}
           </DialogTitle>
-          <DialogDescription>Defina o processo, sua área, tipo, frequência e responsáveis.</DialogDescription>
+          <DialogDescription>
+            {mode === 'edit' ? 'Actualize os dados do processo.' : 'Defina o processo, sua área, tipo, frequência e responsáveis.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -192,7 +263,7 @@ export function ProcessoFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Área *</Label>
-              <Select value={form.areaId || 'none'} onValueChange={v => setForm({ ...form, areaId: v === 'none' ? '' : v })}>
+              <Select value={form.areaId || 'none'} onValueChange={handleAreaChange}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar área" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
@@ -221,12 +292,12 @@ export function ProcessoFormDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Responsável</Label>
+              <Label>Responsável {form.areaId && membrosFiltrados.length === 0 && <span className="text-xs text-muted-foreground italic">(sem membros nesta área)</span>}</Label>
               <Select value={form.responsavelId || 'none'} onValueChange={v => setForm({ ...form, responsavelId: v === 'none' ? '' : v })}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar membro" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem responsável</SelectItem>
-                  {membros.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -237,7 +308,7 @@ export function ProcessoFormDialog({
               <SelectTrigger><SelectValue placeholder="Seleccionar substituto" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Sem substituto</SelectItem>
-                {membros.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -245,7 +316,8 @@ export function ProcessoFormDialog({
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim() || !form.areaId}>
-            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Criar Processo
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {mode === 'edit' ? 'Guardar' : 'Criar Processo'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -253,37 +325,71 @@ export function ProcessoFormDialog({
   )
 }
 
-/* ============== Modal: Criar Actividade ============== */
+/* ============== Modal: Actividade (Criar/Editar) ============== */
+export interface ActividadeFormData {
+  nome: string; descricao: string; frequencia: string;
+  processoId: string; responsavelId: string; substitutoId: string;
+}
+
 export function ActividadeFormDialog({
-  open, onOpenChange, onSubmit, processos, membros, processoPreselecionado
+  open, onOpenChange, onSubmit, processos, membros, initial, mode = 'create', processoPreselecionado, areaIdFiltro
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSubmit: (data: { nome: string; descricao: string; frequencia: string; processoId: string; responsavelId: string; substitutoId: string }) => Promise<void>
+  onSubmit: (data: ActividadeFormData) => Promise<void>
   processos: Processo[]
   membros: Membro[]
+  initial?: Actividade | null
+  mode?: 'create' | 'edit'
   processoPreselecionado?: string
+  areaIdFiltro?: string // quando definido, filtra membros por esta área
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ActividadeFormData>({
     nome: '', descricao: '', frequencia: 'Mensal',
-    processoId: processoPreselecionado || '', responsavelId: '', substitutoId: ''
+    processoId: '', responsavelId: '', substitutoId: ''
   })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (open && processoPreselecionado) {
-      setForm(f => ({ ...f, processoId: processoPreselecionado }))
+    if (open) {
+      setForm({
+        nome: initial?.nome ?? '',
+        descricao: initial?.descricao ?? '',
+        frequencia: initial?.frequencia ?? 'Mensal',
+        processoId: initial?.processoId ?? processoPreselecionado ?? '',
+        responsavelId: initial?.responsavelId ?? '',
+        substitutoId: initial?.substitutoId ?? '',
+      })
     }
-  }, [open, processoPreselecionado])
+  }, [open, initial, processoPreselecionado])
+
+  // Filtra membros pela área do processo seleccionado OU por areaIdFiltro
+  const membrosFiltrados = useMemo(() => {
+    const areaId = areaIdFiltro || processos.find(p => p.id === form.processoId)?.areaId
+    if (!areaId) return membros
+    return membros.filter(m => m.areaId === areaId)
+  }, [membros, form.processoId, processos, areaIdFiltro])
 
   const submit = async () => {
     if (!form.nome.trim() || !form.processoId) return
     setSubmitting(true)
     try {
       await onSubmit(form)
-      setForm({ nome: '', descricao: '', frequencia: 'Mensal', processoId: processoPreselecionado || '', responsavelId: '', substitutoId: '' })
       onOpenChange(false)
     } finally { setSubmitting(false) }
+  }
+
+  // Quando muda o processo, limpa responsável/substituto se não pertencerem à área
+  const handleProcessoChange = (v: string) => {
+    const newProcessoId = v === 'none' ? '' : v
+    const proc = processos.find(p => p.id === newProcessoId)
+    const areaId = proc?.areaId
+    setForm(f => ({
+      ...f,
+      processoId: newProcessoId,
+      responsavelId: f.responsavelId && areaId && !membros.some(m => m.id === f.responsavelId && m.areaId === areaId) ? '' : f.responsavelId,
+      substitutoId: f.substitutoId && areaId && !membros.some(m => m.id === f.substitutoId && m.areaId === areaId) ? '' : f.substitutoId,
+    }))
   }
 
   return (
@@ -291,9 +397,12 @@ export function ActividadeFormDialog({
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" /> Nova Actividade
+            <Activity className="w-5 h-5 text-primary" />
+            {mode === 'edit' ? 'Editar Actividade' : 'Nova Actividade'}
           </DialogTitle>
-          <DialogDescription>Associe a actividade a um processo e defina responsáveis.</DialogDescription>
+          <DialogDescription>
+            {mode === 'edit' ? 'Actualize os dados da actividade.' : 'Associe a actividade a um processo e defina responsáveis.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -307,7 +416,7 @@ export function ActividadeFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Processo *</Label>
-              <Select value={form.processoId || 'none'} onValueChange={v => setForm({ ...form, processoId: v === 'none' ? '' : v })}>
+              <Select value={form.processoId || 'none'} onValueChange={handleProcessoChange}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar processo" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
@@ -331,12 +440,12 @@ export function ActividadeFormDialog({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Responsável</Label>
+              <Label>Responsável {form.processoId && membrosFiltrados.length === 0 && <span className="text-xs text-muted-foreground italic">(sem membros nesta área)</span>}</Label>
               <Select value={form.responsavelId || 'none'} onValueChange={v => setForm({ ...form, responsavelId: v === 'none' ? '' : v })}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem responsável</SelectItem>
-                  {membros.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -346,7 +455,7 @@ export function ActividadeFormDialog({
                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem substituto</SelectItem>
-                  {membros.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  {membrosFiltrados.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -355,7 +464,8 @@ export function ActividadeFormDialog({
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim() || !form.processoId}>
-            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Criar Actividade
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {mode === 'edit' ? 'Guardar' : 'Criar Actividade'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -363,31 +473,47 @@ export function ActividadeFormDialog({
   )
 }
 
-/* ============== Modal: Criar Tarefa ============== */
+/* ============== Modal: Tarefa (Criar/Editar) ============== */
+export interface TarefaFormData {
+  nome: string; descricao: string; inputs: string; outputs: string;
+  actividadeId: string; ferramentaIds: string[]; procedimentos: { descricao: string }[];
+}
+
 export function TarefaFormDialog({
-  open, onOpenChange, onSubmit, actividades, ferramentas, actividadePreselecionada
+  open, onOpenChange, onSubmit, actividades, ferramentas, initial, mode = 'create', actividadePreselecionada
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSubmit: (data: { nome: string; descricao: string; inputs: string; outputs: string; actividadeId: string; ferramentaIds: string[]; procedimentos: { descricao: string }[] }) => Promise<void>
+  onSubmit: (data: TarefaFormData) => Promise<void>
   actividades: Actividade[]
   ferramentas: Ferramenta[]
+  initial?: (Tarefa & { procedimentos?: { id: string; passo: number; descricao: string }[] }) | null
+  mode?: 'create' | 'edit'
   actividadePreselecionada?: string
 }) {
-  const [form, setForm] = useState<{
-    nome: string; descricao: string; inputs: string; outputs: string;
-    actividadeId: string; ferramentaIds: string[]; procedimentos: { descricao: string }[]
-  }>({
+  const [form, setForm] = useState<TarefaFormData>({
     nome: '', descricao: '', inputs: '', outputs: '',
-    actividadeId: actividadePreselecionada || '', ferramentaIds: [], procedimentos: [{ descricao: '' }]
+    actividadeId: '', ferramentaIds: [], procedimentos: [{ descricao: '' }]
   })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (open && actividadePreselecionada) {
-      setForm(f => ({ ...f, actividadeId: actividadePreselecionada }))
+    if (open) {
+      const ferramentaIds = initial?.ferramentaIds ? initial.ferramentaIds.split(',').filter(Boolean) : []
+      const procs = initial?.procedimentos?.length
+        ? [...initial.procedimentos].sort((a, b) => a.passo - b.passo).map(p => ({ descricao: p.descricao }))
+        : [{ descricao: '' }]
+      setForm({
+        nome: initial?.nome ?? '',
+        descricao: initial?.descricao ?? '',
+        inputs: initial?.inputs ?? '',
+        outputs: initial?.outputs ?? '',
+        actividadeId: initial?.actividadeId ?? actividadePreselecionada ?? '',
+        ferramentaIds,
+        procedimentos: procs,
+      })
     }
-  }, [open, actividadePreselecionada])
+  }, [open, initial, actividadePreselecionada])
 
   const addPasso = () => setForm(f => ({ ...f, procedimentos: [...f.procedimentos, { descricao: '' }] }))
   const removePasso = (i: number) => setForm(f => ({ ...f, procedimentos: f.procedimentos.filter((_, idx) => idx !== i) }))
@@ -405,10 +531,6 @@ export function TarefaFormDialog({
     setSubmitting(true)
     try {
       await onSubmit({ ...form, procedimentos: form.procedimentos.filter(p => p.descricao.trim()) })
-      setForm({
-        nome: '', descricao: '', inputs: '', outputs: '',
-        actividadeId: actividadePreselecionada || '', ferramentaIds: [], procedimentos: [{ descricao: '' }]
-      })
       onOpenChange(false)
     } finally { setSubmitting(false) }
   }
@@ -418,9 +540,12 @@ export function TarefaFormDialog({
       <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ListOrdered className="w-5 h-5 text-primary" /> Nova Tarefa
+            <ListOrdered className="w-5 h-5 text-primary" />
+            {mode === 'edit' ? 'Editar Tarefa' : 'Nova Tarefa'}
           </DialogTitle>
-          <DialogDescription>Defina inputs, ferramentas, procedimentos (passos) e outputs.</DialogDescription>
+          <DialogDescription>
+            {mode === 'edit' ? 'Actualize os dados da tarefa.' : 'Defina inputs, ferramentas, procedimentos (passos) e outputs.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
           <div className="space-y-3">
@@ -508,7 +633,8 @@ export function TarefaFormDialog({
         <DialogFooter className="gap-2">
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim() || !form.actividadeId || !form.inputs.trim() || !form.outputs.trim()}>
-            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Criar Tarefa
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {mode === 'edit' ? 'Guardar' : 'Criar Tarefa'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -516,24 +642,38 @@ export function TarefaFormDialog({
   )
 }
 
-/* ============== Modal: Criar Ferramenta ============== */
+/* ============== Modal: Ferramenta (Criar/Editar) ============== */
+export interface FerramentaFormData { nome: string; descricao: string; areaId: string }
+
 export function FerramentaFormDialog({
-  open, onOpenChange, onSubmit, areas
+  open, onOpenChange, onSubmit, areas, initial, mode = 'create', lockedAreaId
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
-  onSubmit: (data: { nome: string; descricao: string; areaId: string }) => Promise<void>
+  onSubmit: (data: FerramentaFormData) => Promise<void>
   areas: Area[]
+  initial?: Ferramenta | null
+  mode?: 'create' | 'edit'
+  lockedAreaId?: string
 }) {
-  const [form, setForm] = useState({ nome: '', descricao: '', areaId: '' })
+  const [form, setForm] = useState<FerramentaFormData>({ nome: '', descricao: '', areaId: '' })
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        nome: initial?.nome ?? '',
+        descricao: initial?.descricao ?? '',
+        areaId: initial?.areaId ?? lockedAreaId ?? '',
+      })
+    }
+  }, [open, initial, lockedAreaId])
 
   const submit = async () => {
     if (!form.nome.trim()) return
     setSubmitting(true)
     try {
       await onSubmit(form)
-      setForm({ nome: '', descricao: '', areaId: '' })
       onOpenChange(false)
     } finally { setSubmitting(false) }
   }
@@ -543,9 +683,12 @@ export function FerramentaFormDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-primary" /> Nova Ferramenta
+            <Wrench className="w-5 h-5 text-primary" />
+            {mode === 'edit' ? 'Editar Ferramenta' : 'Nova Ferramenta'}
           </DialogTitle>
-          <DialogDescription>Cadastre uma ferramenta de trabalho.</DialogDescription>
+          <DialogDescription>
+            {mode === 'edit' ? 'Actualize os dados da ferramenta.' : 'Cadastre uma ferramenta de trabalho.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -556,21 +699,57 @@ export function FerramentaFormDialog({
             <Label htmlFor="f-desc">Descrição</Label>
             <Textarea id="f-desc" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} />
           </div>
-          <div className="space-y-2">
-            <Label>Área</Label>
-            <Select value={form.areaId || 'none'} onValueChange={v => setForm({ ...form, areaId: v === 'none' ? '' : v })}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar área (opcional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sem área específica</SelectItem>
-                {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+          {!lockedAreaId && (
+            <div className="space-y-2">
+              <Label>Área</Label>
+              <Select value={form.areaId || 'none'} onValueChange={v => setForm({ ...form, areaId: v === 'none' ? '' : v })}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar área (opcional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem área específica</SelectItem>
+                  {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim()}>
-            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Criar Ferramenta
+            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {mode === 'edit' ? 'Guardar' : 'Criar Ferramenta'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/* ============== Diálogo de confirmação de eliminação ============== */
+export function DeleteConfirmDialog({
+  open, onOpenChange, onConfirm, title, message, loading
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  onConfirm: () => void
+  title: string
+  message: string
+  loading?: boolean
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="w-5 h-5" />
+            {title}
+          </DialogTitle>
+          <DialogDescription>{message}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2">
+          <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+          <Button variant="destructive" onClick={onConfirm} disabled={loading}>
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Eliminar
           </Button>
         </DialogFooter>
       </DialogContent>
