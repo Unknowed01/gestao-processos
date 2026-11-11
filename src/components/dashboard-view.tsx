@@ -42,7 +42,9 @@ export function DashboardView({
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Visão Geral</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Indicadores do sistema de gestão de processos.</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Bem-vindo ao sistema de gestão de processos. Clique numa área abaixo para ver os seus processos, ou use o menu lateral para navegar.
+        </p>
       </div>
 
       {/* KPIs principais - layout elegante em grid */}

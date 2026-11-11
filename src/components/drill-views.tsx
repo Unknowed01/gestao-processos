@@ -65,7 +65,7 @@ export function DrillBreadcrumb({
 export function AreaDetailView({
   areaId, area, loading, onOpenProcesso, onBack, onRefresh,
   onEditArea, onDeleteArea, onEditProcesso, onDeleteProcesso,
-  onEditMembro, onDeleteMembro
+  onEditMembro, onDeleteMembro, onCreateProcesso
 }: {
   areaId: string
   area: AreaDetalhe | null
@@ -79,6 +79,7 @@ export function AreaDetailView({
   onDeleteProcesso: (p: Processo) => void
   onEditMembro: (m: Membro) => void
   onDeleteMembro: (m: Membro) => void
+  onCreateProcesso: () => void
 }) {
   const [search, setSearch] = useState('')
   const processos = area?.processos ?? []
@@ -135,22 +136,35 @@ export function AreaDetailView({
 
         {/* Processos */}
         <TabsContent value="processos" className="space-y-4 mt-4">
-          {processos.length > 0 && (
-            <div className="relative max-w-md">
-              <Input
-                placeholder="Pesquisar processo nesta área..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
-          )}
+          <div className="flex items-center justify-between gap-3">
+            {processos.length > 0 && (
+              <div className="relative flex-1 max-w-md">
+                <Input
+                  placeholder="Pesquisar processo nesta área..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+            )}
+            <Button onClick={onCreateProcesso} size="sm" className="ml-auto">
+              <Plus className="w-4 h-4 mr-1.5" /> Criar processo
+            </Button>
+          </div>
           {filteredProcessos.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-10 text-center">
-                <Workflow className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  {processos.length === 0 ? "Nenhum processo nesta área ainda." : "Nenhum processo encontrado."}
-                </p>
+                <Workflow className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+                {processos.length === 0 ? (
+                  <>
+                    <p className="text-sm font-medium mb-1">Ainda não há processos nesta área</p>
+                    <p className="text-xs text-muted-foreground mb-4">Os processos são conjuntos de actividades de uma área. Crie o primeiro para começar.</p>
+                    <Button onClick={onCreateProcesso} size="sm">
+                      <Plus className="w-4 h-4 mr-1.5" /> Criar primeiro processo
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhum processo encontrado para a pesquisa.</p>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -322,7 +336,7 @@ function MembroCard({
 /* ============== Detalhe de Processo ============== */
 export function ProcessoDetailView({
   processo, loading, onOpenActividade, onBack, areaName,
-  onEdit, onDelete, onEditActividade, onDeleteActividade
+  onEdit, onDelete, onEditActividade, onDeleteActividade, onCreateActividade
 }: {
   processo: (Processo & { actividades?: Actividade[] }) | null
   loading: boolean
@@ -333,6 +347,7 @@ export function ProcessoDetailView({
   onDelete: () => void
   onEditActividade: (a: Actividade) => void
   onDeleteActividade: (a: Actividade) => void
+  onCreateActividade: () => void
 }) {
   const actividades = processo?.actividades ?? []
 
@@ -438,14 +453,21 @@ export function ProcessoDetailView({
           <h2 className="text-base font-semibold flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
             Actividades do Processo
+            <Badge variant="secondary">{actividades.length}</Badge>
           </h2>
-          <Badge variant="secondary">{actividades.length}</Badge>
+          <Button onClick={onCreateActividade} size="sm">
+            <Plus className="w-4 h-4 mr-1.5" /> Criar actividade
+          </Button>
         </div>
         {actividades.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="py-10 text-center">
-              <Activity className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma actividade neste processo.</p>
+              <Activity className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm font-medium mb-1">Ainda não há actividades neste processo</p>
+              <p className="text-xs text-muted-foreground mb-4">As actividades são conjuntos de tarefas relacionadas. Crie a primeira para começar.</p>
+              <Button onClick={onCreateActividade} size="sm">
+                <Plus className="w-4 h-4 mr-1.5" /> Criar primeira actividade
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -514,7 +536,7 @@ function ActividadeCard({
 /* ============== Detalhe de Actividade ============== */
 export function ActividadeDetailView({
   actividade, loading, onOpenTarefa, onBack, processoName,
-  onEdit, onDelete, onEditTarefa, onDeleteTarefa
+  onEdit, onDelete, onEditTarefa, onDeleteTarefa, onCreateTarefa
 }: {
   actividade: (Actividade & { tarefas?: Tarefa[] }) | null
   loading: boolean
@@ -525,6 +547,7 @@ export function ActividadeDetailView({
   onDelete: () => void
   onEditTarefa: (t: Tarefa) => void
   onDeleteTarefa: (t: Tarefa) => void
+  onCreateTarefa: () => void
 }) {
   const tarefas = actividade?.tarefas ?? []
 
@@ -592,14 +615,21 @@ export function ActividadeDetailView({
           <h2 className="text-base font-semibold flex items-center gap-2">
             <ListChecks className="w-4 h-4 text-primary" />
             Tarefas da Actividade
+            <Badge variant="secondary">{tarefas.length}</Badge>
           </h2>
-          <Badge variant="secondary">{tarefas.length}</Badge>
+          <Button onClick={onCreateTarefa} size="sm">
+            <Plus className="w-4 h-4 mr-1.5" /> Criar tarefa
+          </Button>
         </div>
         {tarefas.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="py-10 text-center">
-              <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma tarefa nesta actividade.</p>
+              <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm font-medium mb-1">Ainda não há tarefas nesta actividade</p>
+              <p className="text-xs text-muted-foreground mb-4">As tarefas são as unidades operacionais com inputs, procedimentos e outputs. Crie a primeira para começar.</p>
+              <Button onClick={onCreateTarefa} size="sm">
+                <Plus className="w-4 h-4 mr-1.5" /> Criar primeira tarefa
+              </Button>
             </CardContent>
           </Card>
         ) : (

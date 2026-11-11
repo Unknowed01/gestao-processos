@@ -196,7 +196,7 @@ export default function Home() {
   // Breadcrumb
   const breadcrumbs: BreadcrumbItem[] = []
   if (view.level !== 'dashboard') {
-    breadcrumbs.push({ label: 'Dashboard', level: 'areas' })
+    breadcrumbs.push({ label: 'Início', level: 'areas' })
   }
   if (view.level === 'membros') {
     breadcrumbs.push({ label: 'Membros', level: 'areas' })
@@ -551,6 +551,7 @@ export default function Home() {
               onDeleteProcesso={(p) => askDelete('processo', p.id, p.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
               onEditMembro={(m) => setEditMembro(m)}
               onDeleteMembro={(m) => askDelete('membro', m.id, m.nome)}
+              onCreateProcesso={() => setProcessoModal(true)}
             />
           )}
 
@@ -565,6 +566,7 @@ export default function Home() {
               onDelete={() => processoDetalhe && askDelete('processo', processoDetalhe.id, processoDetalhe.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
               onEditActividade={(a) => setEditActividade(a)}
               onDeleteActividade={(a) => askDelete('actividade', a.id, a.nome, 'Tem a certeza? Todas as tarefas associadas serão eliminadas.')}
+              onCreateActividade={() => setActividadeModal(true)}
             />
           )}
 
@@ -579,6 +581,7 @@ export default function Home() {
               onDelete={() => actividadeDetalhe && askDelete('actividade', actividadeDetalhe.id, actividadeDetalhe.nome, 'Tem a certeza? Todas as tarefas associadas serão eliminadas.')}
               onEditTarefa={(t) => setEditTarefa(t)}
               onDeleteTarefa={(t) => askDelete('tarefa', t.id, t.nome)}
+              onCreateTarefa={() => setTarefaModal(true)}
             />
           )}
 
@@ -621,35 +624,6 @@ export default function Home() {
             <DadosView areas={areas} />
           )}
         </div>
-
-        {/* FAB contextuais */}
-        {view.level === 'area' && (
-          <button
-            onClick={() => setProcessoModal(true)}
-            className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center z-20"
-            aria-label="Novo processo" title="Novo processo nesta área"
-          >
-            <Workflow className="w-5 h-5" />
-          </button>
-        )}
-        {view.level === 'processo' && (
-          <button
-            onClick={() => setActividadeModal(true)}
-            className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center z-20"
-            aria-label="Nova actividade" title="Nova actividade neste processo"
-          >
-            <Activity className="w-5 h-5" />
-          </button>
-        )}
-        {view.level === 'actividade' && (
-          <button
-            onClick={() => setTarefaModal(true)}
-            className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center z-20"
-            aria-label="Nova tarefa" title="Nova tarefa nesta actividade"
-          >
-            <ListChecks className="w-5 h-5" />
-          </button>
-        )}
       </main>
 
       {/* Modais - Criar */}
@@ -809,7 +783,10 @@ function MembrosListView({
           <CardContent className="py-12 text-center">
             <UserPlus className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <h3 className="font-semibold text-sm">Nenhum membro encontrado</h3>
-            <p className="text-xs text-muted-foreground mt-1">Adicione o primeiro membro da equipa.</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">Adicione o primeiro membro da equipa para começar a atribuir responsabilidades.</p>
+            <Button onClick={onCreate} size="sm">
+              <UserPlus className="w-4 h-4 mr-1.5" /> Adicionar membro
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -907,7 +884,10 @@ function FerramentasListView({
           <CardContent className="py-12 text-center">
             <Wrench className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <h3 className="font-semibold text-sm">Nenhuma ferramenta cadastrada</h3>
-            <p className="text-xs text-muted-foreground mt-1">Cadastre ferramentas para usar nas tarefas.</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">As ferramentas são globais — usadas em qualquer área. Cadastre as ferramentas de trabalho da companhia.</p>
+            <Button onClick={onCreate} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> Adicionar ferramenta
+            </Button>
           </CardContent>
         </Card>
       ) : (
