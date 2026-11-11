@@ -24,11 +24,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 // PUT /api/membros/[id]
+// Suporta actualização completa (todos os campos) ou parcial (apenas areaId)
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const body = await req.json()
     const { nome, email, cargo, areaId } = body
+
+    // Modo parcial: apenas actualizar areaId (para associação a área)
+    if (!nome && body.areaId !== undefined) {
+      const membro = await db.membro.update({
+        where: { id },
+        data: { areaId: areaId || null },
+      })
+      return NextResponse.json(membro)
+    }
+
+    // Modo completo: actualizar todos os campos
     if (!nome?.trim()) {
       return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
     }

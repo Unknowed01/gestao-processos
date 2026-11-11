@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
   Area, AreaDetalhe, Membro, Processo, Actividade, Tarefa, Ferramenta, DashboardData
@@ -31,7 +32,7 @@ import {
 import {
   AreaFormDialog, MembroFormDialog, ProcessoFormDialog, ActividadeFormDialog,
   TarefaFormDialog, FerramentaFormDialog, DeleteConfirmDialog,
-  AreaFormData, MembroFormData, ProcessoFormData, ActividadeFormData, TarefaFormData, FerramentaFormData
+  AreaFormData, MembroFormData, MembroAssociarData, ProcessoFormData, ActividadeFormData, TarefaFormData, FerramentaFormData
 } from '@/components/forms'
 
 type ViewLevel = 'dashboard' | 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa' | 'membros' | 'ferramentas' | 'dados'
@@ -261,6 +262,19 @@ export default function Home() {
     } catch (e) { toast.error((e as Error).message) }
   }
 
+  const handleAssociateMembro = async (data: MembroAssociarData) => {
+    try {
+      // PUT /api/membros/[id] para actualizar o areaId
+      await fetcher(`/api/membros/${data.membroId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ areaId: data.areaId }),
+      })
+      toast.success('Membro associado à área com sucesso!')
+      await loadMembros(); await loadDashboard()
+      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
+    } catch (e) { toast.error((e as Error).message) }
+  }
+
   const handleCreateProcesso = async (data: ProcessoFormData) => {
     try {
       await fetcher('/api/processos', { method: 'POST', body: JSON.stringify(data) })
@@ -485,7 +499,7 @@ export default function Home() {
                 {count !== undefined && (
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-semibold",
-                    isActive ? "bg-white/25 text-white" : "bg-sidebar-accent text-muted-foreground"
+                    isActive ? "bg-white/30 text-white" : "bg-sidebar-accent text-muted-foreground"
                   )}>
                     {count}
                   </span>
@@ -661,6 +675,7 @@ export default function Home() {
         open={membroModal}
         onOpenChange={setMembroModal}
         onSubmit={handleCreateMembro}
+        onAssociate={handleAssociateMembro}
         areas={areas}
         lockedAreaId={view.level === 'area' ? view.areaId : undefined}
       />
@@ -688,6 +703,22 @@ export default function Home() {
         actividades={actividadeDetalhe ? [actividadeDetalhe] : (processoDetalhe?.actividades ?? [])}
         ferramentas={ferramentas}
         actividadePreselecionada={view.actividadeId}
+        onCreateFerramenta={async (nome: string) => {
+          try {
+            const res = await fetch('/api/ferramentas', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nome }),
+            })
+            const nova = await res.json()
+            if (!res.ok) throw new Error(nova.error)
+            await loadFerramentas()
+            return nova as Ferramenta
+          } catch (e) {
+            toast.error((e as Error).message)
+            return null
+          }
+        }}
       />
       <FerramentaFormDialog
         open={ferramentaModal}
@@ -747,6 +778,22 @@ export default function Home() {
           ferramentas={ferramentas}
           initial={editTarefa}
           mode="edit"
+          onCreateFerramenta={async (nome: string) => {
+            try {
+              const res = await fetch('/api/ferramentas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome }),
+              })
+              const nova = await res.json()
+              if (!res.ok) throw new Error(nova.error)
+              await loadFerramentas()
+              return nova as Ferramenta
+            } catch (e) {
+              toast.error((e as Error).message)
+              return null
+            }
+          }}
         />
       )}
       {editFerramenta && (
@@ -787,25 +834,37 @@ function MembrosListView({
   onDelete: (m: Membro) => void
 }) {
   const [search, setSearch] = useState('')
-  const filtered = membros.filter(m =>
-    m.nome.toLowerCase().includes(search.toLowerCase()) ||
-    m.email?.toLowerCase().includes(search.toLowerCase()) ||
-    m.cargo?.toLowerCase().includes(search.toLowerCase())
-  )
+  const [areaFilter, setAreaFilter] = useState('all')
+  const filtered = membros.filter(m => {
+    const matchSearch = m.nome.toLowerCase().includes(search.toLowerCase()) ||
+      m.email?.toLowerCase().includes(search.toLowerCase()) ||
+      m.cargo?.toLowerCase().includes(search.toLowerCase())
+    const matchArea = areaFilter === 'all' || m.areaId === areaFilter
+    return matchSearch && matchArea
+  })
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Membros da Equipa</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Todos os membros cadastrados no sistema.</p>
+          <p className="text-muted-foreground mt-1 text-sm">Todos os membros cadastrados no sistema. {filtered.length !== membros.length && `A mostrar ${filtered.length} de ${membros.length}.`}</p>
         </div>
         <Button onClick={onCreate}><UserPlus className="w-4 h-4 mr-2" /> Novo Membro</Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Pesquisar membro..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Pesquisar membro..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={areaFilter} onValueChange={setAreaFilter}>
+          <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Filtrar por área" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as áreas</SelectItem>
+            {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
@@ -896,14 +955,24 @@ function FerramentasListView({
   onEdit: (f: Ferramenta) => void
   onDelete: (f: Ferramenta) => void
 }) {
+  const [search, setSearch] = useState('')
+  const filtered = ferramentas.filter(f =>
+    f.nome.toLowerCase().includes(search.toLowerCase()) ||
+    f.descricao?.toLowerCase().includes(search.toLowerCase())
+  )
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Ferramentas</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Ferramentas de trabalho usadas nas tarefas.</p>
+          <p className="text-muted-foreground mt-1 text-sm">Ferramentas de trabalho usadas nas tarefas. {filtered.length !== ferramentas.length && `A mostrar ${filtered.length} de ${ferramentas.length}.`}</p>
         </div>
         <Button onClick={onCreate}><Plus className="w-4 h-4 mr-2" /> Nova Ferramenta</Button>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Pesquisar ferramenta..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       {loading ? (
@@ -919,9 +988,18 @@ function FerramentasListView({
             </Button>
           </CardContent>
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-10 text-center">
+            <Wrench className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm font-medium">Nenhuma ferramenta encontrada para "{search}"</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">Verifique a ortografia ou tente um termo mais geral.</p>
+            <Button variant="outline" size="sm" onClick={() => setSearch('')}>Limpar pesquisa</Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {ferramentas.map((f) => (
+          {filtered.map((f) => (
             <Card key={f.id} className="group relative">
               <CardContent className="p-4 pr-10">
                 <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center mb-3">

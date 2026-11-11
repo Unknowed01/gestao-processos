@@ -178,6 +178,7 @@ export function DadosView({ areas }: { areas: Area[] }) {
                     <Checkbox
                       checked={selectedAreas.has(area.id)}
                       onCheckedChange={() => toggleArea(area.id)}
+                      aria-label={`Incluir ${area.nome} na exportação`}
                     />
                     <span className="text-sm truncate flex-1">{area.nome}</span>
                     {area._count?.processos ? (
@@ -304,6 +305,7 @@ export function DadosView({ areas }: { areas: Area[] }) {
                   checked={replaceOnImport}
                   onCheckedChange={(checked) => setReplaceOnImport(!!checked)}
                   className="mt-0.5"
+                  aria-label="Substituir todos os dados existentes antes de importar"
                 />
                 <div className="flex-1">
                   <Label htmlFor="replace-import" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">

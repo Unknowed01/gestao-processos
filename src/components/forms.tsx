@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info } from 'lucide-react'
+import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info, CheckCircle2 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -87,22 +87,27 @@ export function AreaFormDialog({
   )
 }
 
-/* ============== Modal: Membro (Criar/Editar) ============== */
+/* ============== Modal: Membro (Criar/Editar/Associar) ============== */
 export interface MembroFormData { nome: string; email: string; cargo: string; areaId: string }
+export interface MembroAssociarData { membroId: string; areaId: string }
 
 export function MembroFormDialog({
-  open, onOpenChange, onSubmit, areas, initial, mode = 'create', lockedAreaId
+  open, onOpenChange, onSubmit, onAssociate, areas, initial, mode = 'create', lockedAreaId
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   onSubmit: (data: MembroFormData) => Promise<void>
+  onAssociate?: (data: MembroAssociarData) => Promise<void>
   areas: Area[]
   initial?: Membro | null
   mode?: 'create' | 'edit'
-  lockedAreaId?: string // quando definido, área fica fixa e oculta
+  lockedAreaId?: string
 }) {
   const [form, setForm] = useState<MembroFormData>({ nome: '', email: '', cargo: '', areaId: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [sugestoes, setSugestoes] = useState<Membro[]>([])
+  const [membroSelecionado, setMembroSelecionado] = useState<Membro | null>(null)
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -112,17 +117,52 @@ export function MembroFormDialog({
         cargo: initial?.cargo ?? '',
         areaId: initial?.areaId ?? lockedAreaId ?? '',
       })
+      setMembroSelecionado(null)
+      setSugestoes([])
+      setMostrarSugestoes(false)
     }
   }, [open, initial, lockedAreaId])
+
+  // Pesquisa membros existentes (apenas em modo create com lockedAreaId)
+  const pesquisarMembros = async (q: string) => {
+    setForm({ ...form, nome: q })
+    setMembroSelecionado(null)
+    if (q.trim().length >= 2 && lockedAreaId) {
+      try {
+        const res = await fetch(`/api/membros?q=${encodeURIComponent(q.trim())}`)
+        const data = await res.json()
+        setSugestoes(data)
+        setMostrarSugestoes(true)
+      } catch { /* ignora */ }
+    } else {
+      setSugestoes([])
+      setMostrarSugestoes(false)
+    }
+  }
+
+  const seleccionarMembro = (m: Membro) => {
+    setMembroSelecionado(m)
+    setForm({ ...form, nome: m.nome, email: m.email ?? '', cargo: m.cargo ?? '' })
+    setMostrarSugestoes(false)
+  }
+
+  const isAssociar = !!membroSelecionado && !!lockedAreaId && mode === 'create'
 
   const submit = async () => {
     if (!form.nome.trim()) return
     setSubmitting(true)
     try {
-      await onSubmit(form)
+      if (isAssociar && onAssociate) {
+        await onAssociate({ membroId: membroSelecionado!.id, areaId: lockedAreaId! })
+      } else {
+        await onSubmit(form)
+      }
       onOpenChange(false)
     } finally { setSubmitting(false) }
   }
+
+  // Se em modo create com lockedAreaId e onAssociate existe, mostrar combobox
+  const showCombobox = mode === 'create' && !!lockedAreaId && !!onAssociate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,25 +170,79 @@ export function MembroFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-primary" />
-            {mode === 'edit' ? 'Editar Membro' : 'Novo Membro da Equipa'}
+            {mode === 'edit' ? 'Editar Membro' : showCombobox ? 'Adicionar Membro à Área' : 'Novo Membro da Equipa'}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'edit' ? 'Actualize os dados do membro.' : 'Adicione um membro que poderá ser atribuído como responsável ou substituto.'}
+            {mode === 'edit' ? 'Actualize os dados do membro.'
+              : showCombobox ? 'Pesquise um membro existente para associar à área, ou crie um novo.'
+              : 'Adicione um membro que poderá ser atribuído como responsável ou substituto.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-2">
+          {/* Campo Nome — com autocomplete quando showCombobox */}
+          <div className="space-y-2 relative">
             <Label htmlFor="m-nome">Nome completo *</Label>
-            <Input id="m-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: João Silva" />
+            <Input
+              id="m-nome"
+              value={form.nome}
+              onChange={e => showCombobox ? pesquisarMembros(e.target.value) : setForm({ ...form, nome: e.target.value })}
+              placeholder="Ex: João Silva"
+              onFocus={() => showCombobox && sugestoes.length > 0 && setMostrarSugestoes(true)}
+              onBlur={() => setTimeout(() => setMostrarSugestoes(false), 200)}
+            />
+            {/* Sugestões de membros existentes */}
+            {showCombobox && mostrarSugestoes && sugestoes.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase px-3 py-1.5 border-b border-border">
+                  Membros existentes
+                </p>
+                {sugestoes.map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); seleccionarMembro(m) }}
+                    className="w-full text-left px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center text-[10px] font-semibold flex-shrink-0">
+                      {m.nome.trim().split(/\s+/).map(p => p[0] || '').slice(0, 2).join('').toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{m.nome}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {m.cargo || 'Sem cargo'} {m.area?.nome && `· ${m.area.nome}`}
+                      </p>
+                    </div>
+                    {m.areaId === lockedAreaId ? (
+                      <Badge variant="secondary" className="text-[10px] py-0 bg-emerald-50 text-emerald-700">já aqui</Badge>
+                    ) : m.areaId ? (
+                      <Badge variant="outline" className="text-[10px] py-0">noutra área</Badge>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Badge de modo (associar vs criar) */}
+          {isAssociar && (
+            <div className="p-2.5 rounded-md bg-emerald-50 border border-emerald-200 flex items-center gap-2">
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px]">Associar existente</Badge>
+              <p className="text-xs text-emerald-700">Este membro já existe no sistema e será associado à área.</p>
+            </div>
+          )}
+          {showCombobox && !isAssociar && form.nome.trim().length >= 2 && (
+            <p className="text-xs text-muted-foreground">A criar novo membro com este nome.</p>
+          )}
+
+          {/* Campos de email e cargo — desabilitados se associando existente */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="m-email">Email</Label>
-              <Input id="m-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="joao@empresa.ao" />
+              <Input id="m-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="joao@empresa.ao" disabled={isAssociar} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="m-cargo">Cargo / Função</Label>
-              <Input id="m-cargo" value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} placeholder="Ex: Analista" />
+              <Input id="m-cargo" value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} placeholder="Ex: Analista" disabled={isAssociar} />
             </div>
           </div>
           {!lockedAreaId && (
@@ -168,7 +262,7 @@ export function MembroFormDialog({
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
           <Button onClick={submit} disabled={submitting || !form.nome.trim()}>
             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {mode === 'edit' ? 'Guardar' : 'Criar Membro'}
+            {mode === 'edit' ? 'Guardar' : isAssociar ? 'Associar à área' : 'Criar Membro'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -569,7 +663,7 @@ export interface TarefaFormData {
 }
 
 export function TarefaFormDialog({
-  open, onOpenChange, onSubmit, actividades, ferramentas, initial, mode = 'create', actividadePreselecionada
+  open, onOpenChange, onSubmit, actividades, ferramentas, initial, mode = 'create', actividadePreselecionada, onCreateFerramenta
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
@@ -579,6 +673,7 @@ export function TarefaFormDialog({
   initial?: (Tarefa & { procedimentos?: { id: string; passo: number; descricao: string }[] }) | null
   mode?: 'create' | 'edit'
   actividadePreselecionada?: string
+  onCreateFerramenta?: (nome: string) => Promise<Ferramenta | null>
 }) {
   const [form, setForm] = useState<TarefaFormData>({
     nome: '', descricao: '', inputs: '', outputs: '',
@@ -586,6 +681,10 @@ export function TarefaFormDialog({
     actividadeId: '', ferramentaIds: [], procedimentos: [{ descricao: '' }]
   })
   const [submitting, setSubmitting] = useState(false)
+  const [ferramentaBusca, setFerramentaBusca] = useState('')
+  const [mostrarFerramentaSugestoes, setMostrarFerramentaSugestoes] = useState(false)
+  const [ferramentasLocais, setFerramentasLocais] = useState<Ferramenta[]>([])
+  const [criandoFerramenta, setCriandoFerramenta] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -603,8 +702,35 @@ export function TarefaFormDialog({
         ferramentaIds,
         procedimentos: procs,
       })
+      setFerramentaBusca('')
+      setFerramentasLocais([])
     }
   }, [open, initial, actividadePreselecionada])
+
+  // Lista combinada: ferramentas recebidas por prop + criadas inline
+  const todasFerramentas = [...ferramentas, ...ferramentasLocais.filter(f => !ferramentas.some(ff => ff.id === f.id))]
+
+  // Filtra ferramentas pela busca
+  const ferramentasFiltradas = ferramentaBusca.trim()
+    ? todasFerramentas.filter(f => f.nome.toLowerCase().includes(ferramentaBusca.toLowerCase()))
+    : todasFerramentas
+
+  // Verifica se a busca corresponde a uma ferramenta existente (case-insensitive)
+  const buscaExacta = todasFerramentas.some(f => f.nome.toLowerCase() === ferramentaBusca.trim().toLowerCase())
+  const podeCriar = ferramentaBusca.trim().length > 0 && !buscaExacta && !!onCreateFerramenta
+
+  const criarFerramentaInline = async () => {
+    if (!onCreateFerramenta || !ferramentaBusca.trim()) return
+    setCriandoFerramenta(true)
+    try {
+      const nova = await onCreateFerramenta(ferramentaBusca.trim())
+      if (nova) {
+        setFerramentasLocais(prev => [...prev, nova])
+        setForm(f => ({ ...f, ferramentaIds: [...f.ferramentaIds, nova.id] }))
+        setFerramentaBusca('')
+      }
+    } finally { setCriandoFerramenta(false) }
+  }
 
   const addPasso = () => setForm(f => ({ ...f, procedimentos: [...f.procedimentos, { descricao: '' }] }))
   const removePasso = (i: number) => setForm(f => ({ ...f, procedimentos: f.procedimentos.filter((_, idx) => idx !== i) }))
@@ -676,22 +802,82 @@ export function TarefaFormDialog({
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <Wrench className="w-4 h-4" /> Ferramentas
+              {form.ferramentaIds.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] py-0">{form.ferramentaIds.length} seleccionada{form.ferramentaIds.length > 1 ? 's' : ''}</Badge>
+              )}
             </Label>
-            {ferramentas.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">Nenhuma ferramenta cadastrada.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-border bg-muted/30 max-h-32 overflow-y-auto">
-                {ferramentas.map((f) => (
+            {/* Campo de busca */}
+            <div className="relative">
+              <Input
+                placeholder="Pesquisar ferramenta ou criar nova..."
+                value={ferramentaBusca}
+                onChange={e => { setFerramentaBusca(e.target.value); setMostrarFerramentaSugestoes(true) }}
+                onFocus={() => setMostrarFerramentaSugestoes(true)}
+                onBlur={() => setTimeout(() => setMostrarFerramentaSugestoes(false), 200)}
+                className="pr-8"
+              />
+              <Wrench className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            </div>
+            {/* Sugestões filtradas + criação inline */}
+            {mostrarFerramentaSugestoes && (ferramentaBusca.trim() || ferramentasFiltradas.length > 0) && (
+              <div className="rounded-lg border border-border bg-popover shadow-sm max-h-48 overflow-y-auto">
+                {ferramentasFiltradas.length > 0 ? (
+                  ferramentasFiltradas.slice(0, 10).map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); toggleFerramenta(f.id) }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 flex items-center gap-2 transition-colors text-sm",
+                        form.ferramentaIds.includes(f.id) ? "bg-primary/10" : "hover:bg-muted"
+                      )}
+                    >
+                      <Wrench className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="flex-1 truncate">{f.nome}</span>
+                      {form.ferramentaIds.includes(f.id) && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground px-3 py-2">Nenhuma ferramenta encontrada.</p>
+                )}
+                {/* Criação inline */}
+                {podeCriar && (
                   <button
-                    key={f.id} type="button" onClick={() => toggleFerramenta(f.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
-                      form.ferramentaIds.includes(f.id) ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted border-border"
-                    )}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); criarFerramentaInline() }}
+                    disabled={criandoFerramenta}
+                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-muted transition-colors text-sm border-t border-border"
                   >
-                    {f.nome}
+                    {criandoFerramenta ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-primary flex-shrink-0" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                    )}
+                    <span>Criar "<strong className="font-medium">{ferramentaBusca.trim()}</strong>" como nova ferramenta</span>
                   </button>
-                ))}
+                )}
+              </div>
+            )}
+            {/* Ferramentas seleccionadas (chips removíveis) */}
+            {form.ferramentaIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {form.ferramentaIds.map(id => {
+                  const f = todasFerramentas.find(ff => ff.id === id)
+                  if (!f) return null
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => toggleFerramenta(f.id)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                    >
+                      {f.nome}
+                      <X className="w-3 h-3" />
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
