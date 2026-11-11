@@ -5,13 +5,16 @@ import { toast } from 'sonner'
 import {
   LayoutGrid, Building2, Users, Wrench, Database,
   Menu, Workflow, ListChecks, Activity,
-  Mail, UserPlus, Search, Trash2, Plus
+  Mail, UserPlus, Search, Trash2, Plus, MoreVertical, Pencil
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import {
   Area, AreaDetalhe, Membro, Processo, Actividade, Tarefa, Ferramenta, DashboardData
@@ -20,6 +23,7 @@ import { DashboardView } from '@/components/dashboard-view'
 import { OrganogramaView } from '@/components/organograma-view'
 import { DadosView } from '@/components/dados-view'
 import { TreeSidebar } from '@/components/tree-sidebar'
+import { ListSkeleton, GridSkeleton } from '@/components/skeletons'
 import {
   AreaDetailView, ProcessoDetailView, ActividadeDetailView,
   TarefaDetailView, DrillBreadcrumb, BreadcrumbItem
@@ -74,7 +78,7 @@ export default function Home() {
   const [tarefaDetalhe, setTarefaDetalhe] = useState<Tarefa | null>(null)
   const [membros, setMembros] = useState<Membro[]>([])
   const [ferramentas, setFerramentas] = useState<Ferramenta[]>([])
-  const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState<Record<string, boolean>>({ dashboard: true, areas: true, membros: true, ferramentas: true })
 
   // Modais - criar
   const [areaModal, setAreaModal] = useState(false)
@@ -481,7 +485,7 @@ export default function Home() {
                 {count !== undefined && (
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-semibold",
-                    isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-sidebar-accent text-muted-foreground"
+                    isActive ? "bg-white/25 text-white" : "bg-sidebar-accent text-muted-foreground"
                   )}>
                     {count}
                   </span>
@@ -492,7 +496,7 @@ export default function Home() {
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
-          <p className="text-[10px] text-muted-foreground/60 text-center">
+          <p className="text-xs text-muted-foreground text-center">
             {dashboard ? `${dashboard.counts.areas} áreas · ${dashboard.counts.processos} processos · ${dashboard.counts.tarefas} tarefas` : '—'}
           </p>
         </div>
@@ -793,7 +797,7 @@ function MembrosListView({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Membros da Equipa</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Membros da Equipa</h1>
           <p className="text-muted-foreground mt-1 text-sm">Todos os membros cadastrados no sistema.</p>
         </div>
         <Button onClick={onCreate}><UserPlus className="w-4 h-4 mr-2" /> Novo Membro</Button>
@@ -805,10 +809,7 @@ function MembrosListView({
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center py-20">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-sm text-muted-foreground">A carregar membros...</p>
-        </div>
+        <ListSkeleton count={6} />
       ) : filtered.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
@@ -823,7 +824,7 @@ function MembrosListView({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((m) => {
-            const iniciais = m.nome.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
+            const iniciais = m.nome.trim().split(/\s+/).map(p => p[0] || '').slice(0, 2).join('').toUpperCase() || '?'
             return (
               <MembroListCard key={m.id} membro={m} iniciais={iniciais} onEdit={() => onEdit(m)} onDelete={() => onDelete(m)} />
             )
@@ -899,17 +900,14 @@ function FerramentasListView({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Ferramentas</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Ferramentas</h1>
           <p className="text-muted-foreground mt-1 text-sm">Ferramentas de trabalho usadas nas tarefas.</p>
         </div>
         <Button onClick={onCreate}><Plus className="w-4 h-4 mr-2" /> Nova Ferramenta</Button>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center py-20">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-sm text-muted-foreground">A carregar ferramentas...</p>
-        </div>
+        <GridSkeleton cols={4} count={8} />
       ) : ferramentas.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
@@ -943,60 +941,30 @@ function FerramentasListView({
   )
 }
 
-/* ============== Menu de acções para listas globais ============== */
+/* ============== Menu de acções para listas globais (usa DropdownMenu do shadcn) ============== */
 function ActionMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false)
   return (
-    <div className="relative">
-      <button
-        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
-        onClick={(e) => { e.stopPropagation(); setOpen(!open) }}
-        aria-label="Mais acções"
-      >
-        <MoreVerticalIcon />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-8 z-20 w-36 rounded-md border border-border bg-popover shadow-md py-1 text-sm">
-            <button
-              className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2"
-              onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit() }}
-            >
-              <PencilIcon /> Editar
-            </button>
-            <div className="h-px bg-border my-1" />
-            <button
-              className="w-full text-left px-3 py-1.5 hover:bg-muted flex items-center gap-2 text-destructive"
-              onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete() }}
-            >
-              <Trash2Icon /> Eliminar
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-function MoreVerticalIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
-    </svg>
-  )
-}
-function PencilIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-    </svg>
-  )
-}
-function Trash2Icon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Mais acções"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={onEdit}>
+          <Pencil className="w-3.5 h-3.5 mr-2" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+          <Trash2 className="w-3.5 h-3.5 mr-2" />
+          Eliminar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

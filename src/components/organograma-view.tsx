@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Building2, ChevronRight, Search, Crown, Briefcase, Shield,
   Workflow, Users, Wrench, Plus
@@ -112,16 +113,24 @@ export function OrganogramaView({
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center py-20">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-sm text-muted-foreground">A carregar organograma...</p>
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <Skeleton key={i} className="w-full h-24 rounded-lg" />
+            ))}
+          </div>
         </div>
       ) : totalFiltrado === 0 && areasSemGrupo.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <Building2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <h3 className="font-semibold text-sm">Nenhuma área encontrada</h3>
-            <p className="text-xs text-muted-foreground mt-1">Tente outro termo de pesquisa.</p>
+            <h3 className="font-semibold text-sm">Nenhuma área encontrada{search && ` para "${search}"`}</h3>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">Verifique a ortografia ou tente um termo mais geral.</p>
+            {search && (
+              <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+                Limpar pesquisa
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

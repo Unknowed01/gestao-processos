@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { DashboardData, TIPO_COLORS, TIPO_DOT, FREQ_COLORS, getAreaColor } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { DashboardSkeleton } from '@/components/skeletons'
 
 export function DashboardView({
   data, loading, onOpenArea, onNavigateMembros
@@ -18,17 +19,26 @@ export function DashboardView({
   onOpenArea: (id: string) => void
   onNavigateMembros: () => void
 }) {
+  // Skeleton durante carregamento (sem flash de erro)
   if (loading && !data) {
+    return <DashboardSkeleton />
+  }
+  // Estado de erro (apenas quando não está a carregar)
+  if (!data && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
-        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm text-muted-foreground">A carregar dados...</p>
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+          <Building2 className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium mb-1">Não foi possível carregar o dashboard</p>
+        <p className="text-xs text-muted-foreground mb-4">Verifique a ligação ao servidor e tente novamente.</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          Tentar novamente
+        </Button>
       </div>
     )
   }
-  if (!data) {
-    return <div className="text-center py-32 text-muted-foreground">Não foi possível carregar o dashboard.</div>
-  }
+  if (!data) return <DashboardSkeleton />
 
   const total = data.counts
   const totalProcessos = data.processosPorTipo.reduce((a, b) => a + b._count, 0) || 1
@@ -41,7 +51,7 @@ export function DashboardView({
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Visão Geral</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Visão Geral</h1>
         <p className="text-muted-foreground mt-1 text-sm">
           Bem-vindo ao sistema de gestão de processos. Clique numa área abaixo para ver os seus processos, ou use o menu lateral para navegar.
         </p>

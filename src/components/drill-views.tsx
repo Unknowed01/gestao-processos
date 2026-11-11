@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ChevronRight, Plus, Trash2, Loader2, Mail, Building2, Workflow,
+  ChevronRight, Plus, Trash2, Mail, Building2, Workflow,
   Activity, ListChecks, Users, Wrench, Target, ArrowLeft, UserCheck,
   ArrowDownToLine, ArrowUpFromLine, ListOrdered, Calendar, CircleDot,
   Pencil, MoreVertical, Scale, CheckCircle2, Circle, Clock
@@ -21,6 +21,7 @@ import {
   TIPO_COLORS, TIPO_DOT, FREQ_COLORS, formatDataRevisao
 } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { DetailSkeleton, ListSkeleton, GridSkeleton } from '@/components/skeletons'
 
 /* ============== Breadcrumb de drill-down ============== */
 export interface BreadcrumbItem {
@@ -91,12 +92,7 @@ export function AreaDetailView({
   )
 
   if (loading && !area) {
-    return (
-      <div className="flex flex-col items-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
-        <p className="text-sm text-muted-foreground">A carregar área...</p>
-      </div>
-    )
+    return <DetailSkeleton />
   }
   if (!area) {
     return <div className="text-center py-20 text-muted-foreground">Área não encontrada.</div>
@@ -121,7 +117,7 @@ export function AreaDetailView({
       </div>
 
       <Tabs defaultValue="processos">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="processos" className="text-xs sm:text-sm">
             <Workflow className="w-3.5 h-3.5 mr-1.5" />Processos
             <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">{processos.length}</Badge>
@@ -251,7 +247,7 @@ function ProcessoCard({
   return (
     <div className="group relative">
       <button onClick={onClick} className="group/card text-left w-full">
-        <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+        <Card className="h-full hover:shadow-md hover:border-primary/40 hover:-translate-y-0.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <CardHeader className="pb-2 pr-10">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -300,7 +296,7 @@ function MembroCard({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const iniciais = membro.nome.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()
+  const iniciais = membro.nome.trim().split(/\s+/).map(p => p[0] || '').slice(0, 2).join('').toUpperCase() || '?'
   const totalResp = (membro._count?.procResp ?? 0) + (membro._count?.actResp ?? 0)
   const totalSub = (membro._count?.procSubst ?? 0) + (membro._count?.actSubst ?? 0)
   return (
@@ -362,12 +358,7 @@ export function ProcessoDetailView({
   const actividades = processo?.actividades ?? []
 
   if (loading && !processo) {
-    return (
-      <div className="flex flex-col items-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
-        <p className="text-sm text-muted-foreground">A carregar processo...</p>
-      </div>
-    )
+    return <DetailSkeleton />
   }
   if (!processo) {
     return <div className="text-center py-20 text-muted-foreground">Processo não encontrado.</div>
@@ -510,7 +501,7 @@ function ActividadeCard({
   return (
     <div className="group relative">
       <button onClick={onClick} className="group/card text-left w-full">
-        <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+        <Card className="h-full hover:shadow-md hover:border-primary/40 hover:-translate-y-0.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <CardHeader className="pb-2 pr-10">
             <div className="flex items-start justify-between gap-2">
               <Badge variant="secondary" className={cn("text-[10px] py-0", FREQ_COLORS[actividade.frequencia])}>
@@ -562,12 +553,7 @@ export function ActividadeDetailView({
   const tarefas = actividade?.tarefas ?? []
 
   if (loading && !actividade) {
-    return (
-      <div className="flex flex-col items-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
-        <p className="text-sm text-muted-foreground">A carregar actividade...</p>
-      </div>
-    )
+    return <DetailSkeleton />
   }
   if (!actividade) {
     return <div className="text-center py-20 text-muted-foreground">Actividade não encontrada.</div>
@@ -673,7 +659,7 @@ function TarefaCard({
   return (
     <div className="group relative">
       <button onClick={onClick} className="group/card text-left w-full">
-        <Card className="h-full hover:shadow-md hover:border-primary/40 transition-all">
+        <Card className="h-full hover:shadow-md hover:border-primary/40 hover:-translate-y-0.5 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <CardHeader className="pb-2 pr-10">
             <div className="flex items-start justify-between gap-2">
               <CardTitle className="text-sm flex items-center gap-2 leading-tight">
@@ -734,12 +720,7 @@ export function TarefaDetailView({
   onDelete: () => void
 }) {
   if (loading && !tarefa) {
-    return (
-      <div className="flex flex-col items-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mb-3" />
-        <p className="text-sm text-muted-foreground">A carregar tarefa...</p>
-      </div>
-    )
+    return <DetailSkeleton />
   }
   if (!tarefa) {
     return <div className="text-center py-20 text-muted-foreground">Tarefa não encontrada.</div>
@@ -888,7 +869,7 @@ function EntityMenu({
         <button
           className={cn(
             "flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors",
-            small ? "w-7 h-7 opacity-0 group-hover:opacity-100" : "w-9 h-9"
+            small ? "w-8 h-8 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "w-9 h-9"
           )}
           aria-label="Mais acções"
           onClick={(e) => e.stopPropagation()}
