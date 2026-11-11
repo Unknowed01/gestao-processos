@@ -19,6 +19,7 @@ import {
 import { DashboardView } from '@/components/dashboard-view'
 import { OrganogramaView } from '@/components/organograma-view'
 import { DadosView } from '@/components/dados-view'
+import { TreeSidebar } from '@/components/tree-sidebar'
 import {
   AreaDetailView, ProcessoDetailView, ActividadeDetailView,
   TarefaDetailView, DrillBreadcrumb, BreadcrumbItem
@@ -537,63 +538,87 @@ export default function Home() {
             />
           )}
 
-          {view.level === 'area' && view.areaId && (
-            <AreaDetailView
-              areaId={view.areaId}
-              area={areaDetalhe}
-              loading={!!loading.area}
-              onOpenProcesso={openProcesso}
-              onBack={goToAreas}
-              onRefresh={() => loadAreaDetalhe(view.areaId!)}
-              onEditArea={() => setEditArea(areaDetalhe)}
-              onDeleteArea={() => areaDetalhe && askDelete('area', areaDetalhe.id, areaDetalhe.nome, 'Tem a certeza? Todos os processos, actividades e tarefas associadas serão eliminados.')}
-              onEditProcesso={(p) => setEditProcesso(p)}
-              onDeleteProcesso={(p) => askDelete('processo', p.id, p.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
-              onEditMembro={(m) => setEditMembro(m)}
-              onDeleteMembro={(m) => askDelete('membro', m.id, m.nome)}
-              onCreateProcesso={() => setProcessoModal(true)}
-            />
-          )}
+          {/* === Encapsulamento: árvore + conteúdo quando dentro de uma área === */}
+          {['area', 'processo', 'actividade', 'tarefa'].includes(view.level) && view.areaId && (
+            <div className="flex gap-4 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+              {/* Árvore lateral */}
+              <aside className="hidden lg:block w-64 flex-shrink-0 border border-border rounded-lg bg-card overflow-hidden max-h-[calc(100vh-8rem)] sticky top-20 self-start">
+                <TreeSidebar
+                  areaId={view.areaId}
+                  selectedLevel={view.level as 'area' | 'processo' | 'actividade' | 'tarefa'}
+                  selectedProcessoId={view.processoId}
+                  selectedActividadeId={view.actividadeId}
+                  selectedTarefaId={view.tarefaId}
+                  onSelectArea={() => openArea(view.areaId!)}
+                  onSelectProcesso={(pid) => openProcesso(pid)}
+                  onSelectActividade={(pid, aid) => setView({ level: 'actividade', areaId: view.areaId, processoId: pid, actividadeId: aid })}
+                  onSelectTarefa={(pid, aid, tid) => setView({ level: 'tarefa', areaId: view.areaId, processoId: pid, actividadeId: aid, tarefaId: tid })}
+                />
+              </aside>
 
-          {view.level === 'processo' && view.processoId && (
-            <ProcessoDetailView
-              processo={processoDetalhe}
-              loading={!!loading.processo}
-              onOpenActividade={openActividade}
-              onBack={() => view.areaId && openArea(view.areaId)}
-              areaName={areaDetalhe?.nome}
-              onEdit={() => setEditProcesso(processoDetalhe)}
-              onDelete={() => processoDetalhe && askDelete('processo', processoDetalhe.id, processoDetalhe.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
-              onEditActividade={(a) => setEditActividade(a)}
-              onDeleteActividade={(a) => askDelete('actividade', a.id, a.nome, 'Tem a certeza? Todas as tarefas associadas serão eliminadas.')}
-              onCreateActividade={() => setActividadeModal(true)}
-            />
-          )}
+              {/* Conteúdo principal */}
+              <div className="flex-1 min-w-0">
+                {view.level === 'area' && view.areaId && (
+                  <AreaDetailView
+                    areaId={view.areaId}
+                    area={areaDetalhe}
+                    loading={!!loading.area}
+                    onOpenProcesso={openProcesso}
+                    onBack={goToAreas}
+                    onRefresh={() => loadAreaDetalhe(view.areaId!)}
+                    onEditArea={() => setEditArea(areaDetalhe)}
+                    onDeleteArea={() => areaDetalhe && askDelete('area', areaDetalhe.id, areaDetalhe.nome, 'Tem a certeza? Todos os processos, actividades e tarefas associadas serão eliminados.')}
+                    onEditProcesso={(p) => setEditProcesso(p)}
+                    onDeleteProcesso={(p) => askDelete('processo', p.id, p.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
+                    onEditMembro={(m) => setEditMembro(m)}
+                    onDeleteMembro={(m) => askDelete('membro', m.id, m.nome)}
+                    onCreateProcesso={() => setProcessoModal(true)}
+                    onCreateMembro={() => setMembroModal(true)}
+                  />
+                )}
 
-          {view.level === 'actividade' && view.actividadeId && (
-            <ActividadeDetailView
-              actividade={actividadeDetalhe}
-              loading={!!loading.actividade}
-              onOpenTarefa={openTarefa}
-              onBack={() => view.processoId && openProcesso(view.processoId)}
-              processoName={processoDetalhe?.nome}
-              onEdit={() => setEditActividade(actividadeDetalhe)}
-              onDelete={() => actividadeDetalhe && askDelete('actividade', actividadeDetalhe.id, actividadeDetalhe.nome, 'Tem a certeza? Todas as tarefas associadas serão eliminadas.')}
-              onEditTarefa={(t) => setEditTarefa(t)}
-              onDeleteTarefa={(t) => askDelete('tarefa', t.id, t.nome)}
-              onCreateTarefa={() => setTarefaModal(true)}
-            />
-          )}
+                {view.level === 'processo' && view.processoId && (
+                  <ProcessoDetailView
+                    processo={processoDetalhe}
+                    loading={!!loading.processo}
+                    onOpenActividade={openActividade}
+                    onBack={() => view.areaId && openArea(view.areaId)}
+                    areaName={areaDetalhe?.nome}
+                    onEdit={() => setEditProcesso(processoDetalhe)}
+                    onDelete={() => processoDetalhe && askDelete('processo', processoDetalhe.id, processoDetalhe.nome, 'Tem a certeza? Todas as actividades e tarefas associadas serão eliminadas.')}
+                    onEditActividade={(a) => setEditActividade(a)}
+                    onDeleteActividade={(a) => askDelete('actividade', a.id, a.nome, 'Tem a certeza? Todas as tarefas associadas serão eliminadas.')}
+                    onCreateActividade={() => setActividadeModal(true)}
+                  />
+                )}
 
-          {view.level === 'tarefa' && view.tarefaId && (
-            <TarefaDetailView
-              tarefa={tarefaDetalhe}
-              loading={!!loading.tarefa}
-              onBack={() => view.actividadeId && openActividade(view.actividadeId)}
-              ferramentas={ferramentas}
-              onEdit={() => setEditTarefa(tarefaDetalhe)}
-              onDelete={() => tarefaDetalhe && askDelete('tarefa', tarefaDetalhe.id, tarefaDetalhe.nome)}
-            />
+                {view.level === 'actividade' && view.actividadeId && (
+                  <ActividadeDetailView
+                    actividade={actividadeDetalhe}
+                    loading={!!loading.actividade}
+                    onOpenTarefa={openTarefa}
+                    onBack={() => view.processoId && openProcesso(view.processoId)}
+                    processoName={processoDetalhe?.nome}
+                    onEdit={() => setEditActividade(actividadeDetalhe)}
+                    onDelete={() => actividadeDetalhe && askDelete('actividade', actividadeDetalhe.id, actividadeDetalhe.nome, 'Tem a certeza? Todas as tarefas associadas serão eliminadas.')}
+                    onEditTarefa={(t) => setEditTarefa(t)}
+                    onDeleteTarefa={(t) => askDelete('tarefa', t.id, t.nome)}
+                    onCreateTarefa={() => setTarefaModal(true)}
+                  />
+                )}
+
+                {view.level === 'tarefa' && view.tarefaId && (
+                  <TarefaDetailView
+                    tarefa={tarefaDetalhe}
+                    loading={!!loading.tarefa}
+                    onBack={() => view.actividadeId && openActividade(view.actividadeId)}
+                    ferramentas={ferramentas}
+                    onEdit={() => setEditTarefa(tarefaDetalhe)}
+                    onDelete={() => tarefaDetalhe && askDelete('tarefa', tarefaDetalhe.id, tarefaDetalhe.nome)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {view.level === 'membros' && (
@@ -628,7 +653,13 @@ export default function Home() {
 
       {/* Modais - Criar */}
       <AreaFormDialog open={areaModal} onOpenChange={setAreaModal} onSubmit={handleCreateArea} />
-      <MembroFormDialog open={membroModal} onOpenChange={setMembroModal} onSubmit={handleCreateMembro} areas={areas} />
+      <MembroFormDialog
+        open={membroModal}
+        onOpenChange={setMembroModal}
+        onSubmit={handleCreateMembro}
+        areas={areas}
+        lockedAreaId={view.level === 'area' ? view.areaId : undefined}
+      />
       <ProcessoFormDialog
         open={processoModal}
         onOpenChange={setProcessoModal}

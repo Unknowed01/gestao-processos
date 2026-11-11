@@ -65,7 +65,7 @@ export function DrillBreadcrumb({
 export function AreaDetailView({
   areaId, area, loading, onOpenProcesso, onBack, onRefresh,
   onEditArea, onDeleteArea, onEditProcesso, onDeleteProcesso,
-  onEditMembro, onDeleteMembro, onCreateProcesso
+  onEditMembro, onDeleteMembro, onCreateProcesso, onCreateMembro
 }: {
   areaId: string
   area: AreaDetalhe | null
@@ -80,6 +80,7 @@ export function AreaDetailView({
   onEditMembro: (m: Membro) => void
   onDeleteMembro: (m: Membro) => void
   onCreateProcesso: () => void
+  onCreateMembro: () => void
 }) {
   const [search, setSearch] = useState('')
   const processos = area?.processos ?? []
@@ -184,11 +185,20 @@ export function AreaDetailView({
 
         {/* Equipa */}
         <TabsContent value="equipa" className="mt-4">
+          <div className="flex items-center justify-end mb-3">
+            <Button onClick={onCreateMembro} size="sm">
+              <Plus className="w-4 h-4 mr-1.5" /> Adicionar membro
+            </Button>
+          </div>
           {membros.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-10 text-center">
-                <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Nenhum membro associado a esta área.</p>
+                <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm font-medium mb-1">Ainda não há membros nesta área</p>
+                <p className="text-xs text-muted-foreground mb-4">Adicione membros para poder atribuir responsabilidades nos processos e actividades.</p>
+                <Button onClick={onCreateMembro} size="sm">
+                  <Plus className="w-4 h-4 mr-1.5" /> Adicionar primeiro membro
+                </Button>
               </CardContent>
             </Card>
           ) : (
