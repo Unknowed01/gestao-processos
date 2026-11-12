@@ -300,31 +300,31 @@ function MembroCard({
   const totalResp = (membro._count?.procResp ?? 0) + (membro._count?.actResp ?? 0)
   const totalSub = (membro._count?.procSubst ?? 0) + (membro._count?.actSubst ?? 0)
   return (
-    <Card className="group relative">
-      <CardContent className="p-4 pr-10">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-xs flex-shrink-0">
+    <Card className="group relative transition-all hover:shadow-md hover:-translate-y-0.5">
+      <CardContent className="p-3 pr-9">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-xs flex-shrink-0">
             {iniciais}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm truncate">{membro.nome}</h3>
             {membro.cargo && <p className="text-xs text-muted-foreground truncate">{membro.cargo}</p>}
             {membro.email && (
-              <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
                 <Mail className="w-3 h-3" />
                 <span className="truncate">{membro.email}</span>
               </div>
             )}
             {(totalResp > 0 || totalSub > 0) && (
-              <div className="flex items-center gap-2 mt-2 text-[10px]">
+              <div className="flex items-center gap-1.5 mt-1.5">
                 {totalResp > 0 && (
-                  <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50">
+                  <Badge variant="outline" className="text-[10px] py-0 h-5 bg-emerald-50 text-emerald-700 border-emerald-200">
                     <UserCheck className="w-2.5 h-2.5 mr-0.5" />{totalResp} resp.
                   </Badge>
                 )}
                 {totalSub > 0 && (
-                  <Badge variant="outline" className="text-[10px] py-0 bg-amber-50">
-                    {totalSub} substit.
+                  <Badge variant="outline" className="text-[10px] py-0 h-5 bg-amber-50 text-amber-700 border-amber-200">
+                    {totalSub} subst.
                   </Badge>
                 )}
               </div>

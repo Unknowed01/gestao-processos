@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Building2, Workflow, Activity, ListChecks, Users, Wrench,
-  ArrowRight, TrendingUp, Clock, ChevronRight
+  ArrowRight, TrendingUp, Clock, ChevronRight, AlertTriangle, UserX,
+  CircleAlert
 } from 'lucide-react'
-import { DashboardData, TIPO_COLORS, TIPO_DOT, FREQ_COLORS, getAreaColor } from '@/lib/types'
+import { DashboardData, TIPO_COLORS, TIPO_DOT, FREQ_COLORS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { DashboardSkeleton } from '@/components/skeletons'
 
@@ -19,11 +20,7 @@ export function DashboardView({
   onOpenArea: (id: string) => void
   onNavigateMembros: () => void
 }) {
-  // Skeleton durante carregamento (sem flash de erro)
-  if (loading && !data) {
-    return <DashboardSkeleton />
-  }
-  // Estado de erro (apenas quando não está a carregar)
+  if (loading && !data) return <DashboardSkeleton />
   if (!data && !loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
@@ -32,9 +29,7 @@ export function DashboardView({
         </div>
         <p className="text-sm font-medium mb-1">Não foi possível carregar o dashboard</p>
         <p className="text-xs text-muted-foreground mb-4">Verifique a ligação ao servidor e tente novamente.</p>
-        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-          Tentar novamente
-        </Button>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Tentar novamente</Button>
       </div>
     )
   }
@@ -42,77 +37,126 @@ export function DashboardView({
 
   const total = data.counts
   const totalProcessos = data.processosPorTipo.reduce((a, b) => a + b._count, 0) || 1
+  const areasComProcessos = data.areasComContagem.filter(a => a._count.processos > 0).length
+  const pctCoberto = total.areas > 0 ? Math.round((areasComProcessos / total.areas) * 100) : 0
+  const pctTarefasSemInstr = total.tarefas > 0 ? Math.round((data.alerts.tarefasSemInstrucoes.count / total.tarefas) * 100) : 0
 
-  // Calcula % de completude da hierarquia (quantas áreas têm pelo menos 1 tarefa)
-  const areasComTarefas = data.areasComContagem.filter(a => a._count.processos > 0).length
-  const pctCoberto = total.areas > 0 ? Math.round((areasComTarefas / total.areas) * 100) : 0
+  // Tempo relativo
+  const timeAgo = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime()
+    const h = Math.floor(diff / 3600000)
+    if (h < 1) return 'há minutos'
+    if (h < 24) return `há ${h}h`
+    const d = Math.floor(h / 24)
+    return `há ${d}d`
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Visão Geral</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Visão Geral</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Bem-vindo ao sistema de gestão de processos. Clique numa área abaixo para ver os seus processos, ou use o menu lateral para navegar.
+          Estado do mapeamento de processos. Items abaixo precisam de atenção.
         </p>
       </div>
 
-      {/* KPIs principais - layout elegante em grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        <KpiCard icon={Building2} label="Áreas" value={total.areas} color="emerald" onClick={() => onOpenArea('__areas__')} />
-        <KpiCard icon={Workflow} label="Processos" value={total.processos} color="orange" />
-        <KpiCard icon={Activity} label="Actividades" value={total.actividades} color="violet" />
-        <KpiCard icon={ListChecks} label="Tarefas" value={total.tarefas} color="sky" />
-        <KpiCard icon={Users} label="Membros" value={total.membros} color="rose" onClick={onNavigateMembros} />
-        <KpiCard icon={Wrench} label="Ferramentas" value={total.ferramentas} color="teal" />
+      {/* KPI Hero — % cobertura */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide">Cobertura do mapeamento</p>
+              <div className="flex items-baseline gap-3 mt-1">
+                <span className="text-4xl font-bold">{pctCoberto}%</span>
+                <span className="text-sm text-emerald-600 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> {areasComProcessos} de {total.areas} áreas
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {data.alerts.areasSemProcessos.length > 0
+                  ? `${data.alerts.areasSemProcessos.length} áreas ainda sem processos definidos`
+                  : 'Todas as áreas têm processos definidos!'}
+              </p>
+            </div>
+            {/* Barra de progresso circular */}
+            <div className="relative w-20 h-20 flex-shrink-0">
+              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+                <circle
+                  cx="40" cy="40" r="32" fill="none" stroke="currentColor" strokeWidth="6"
+                  className="text-primary transition-all duration-500"
+                  strokeDasharray={`${2 * Math.PI * 32}`}
+                  strokeDashoffset={`${2 * Math.PI * 32 * (1 - pctCoberto / 100)}`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{pctCoberto}%</span>
+            </div>
+          </div>
+          {data.alerts.areasSemProcessos.length > 0 && (
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => onOpenArea('__areas__')}>
+              Ver {data.alerts.areasSemProcessos.length} áreas sem processos
+              <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Alertas — precisa de atenção */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-500" />
+          Precisa de atenção
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Áreas sem processos */}
+          <AlertCard
+            icon={Building2}
+            color="rose"
+            title="Áreas sem processos"
+            count={data.alerts.areasSemProcessos.length}
+            items={data.alerts.areasSemProcessos.slice(0, 3).map(a => a.nome)}
+            cta="Ver no organograma"
+            onClick={() => onOpenArea('__areas__')}
+          />
+          {/* Processos sem responsável */}
+          <AlertCard
+            icon={UserX}
+            color="amber"
+            title="Processos sem responsável"
+            count={data.alerts.processosSemResponsavel.length}
+            items={data.alerts.processosSemResponsavel.slice(0, 3).map(p => p.nome)}
+            cta="Atribuir responsáveis"
+            onClick={() => onOpenArea('__areas__')}
+          />
+          {/* Tarefas sem instruções */}
+          <AlertCard
+            icon={CircleAlert}
+            color="amber"
+            title="Tarefas sem instruções"
+            count={data.alerts.tarefasSemInstrucoes.count}
+            extra={`${pctTarefasSemInstr}% de ${total.tarefas} tarefas`}
+            cta="Rever tarefas"
+            onClick={() => onOpenArea('__areas__')}
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Áreas (maior parte do espaço) */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
-                Áreas Organizacionais
-              </CardTitle>
-              <CardDescription className="text-xs mt-1">
-                {areasComTarefas} de {total.areas} áreas com processos definidos ({pctCoberto}%)
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[420px] overflow-y-auto pr-1">
-              {data.areasComContagem.map((area, idx) => {
-                const color = getAreaColor(idx)
-                return (
-                  <button
-                    key={area.id}
-                    onClick={() => onOpenArea(area.id)}
-                    className="group flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-muted/40 transition-all text-left"
-                  >
-                    <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0", color.icon)}>
-                      <Building2 className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{area.nome}</p>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-0.5"><Workflow className="w-3 h-3" />{area._count.processos}</span>
-                        <span className="flex items-center gap-0.5"><Users className="w-3 h-3" />{area._count.membros}</span>
-                        <span className="flex items-center gap-0.5"><Wrench className="w-3 h-3" />{area._count.ferramentas}</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
+      {/* KPIs compactos */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <MiniKpi icon={Building2} label="Áreas" value={total.areas} onClick={() => onOpenArea('__areas__')} />
+        <MiniKpi icon={Workflow} label="Processos" value={total.processos} />
+        <MiniKpi icon={Activity} label="Actividades" value={total.actividades} />
+        <MiniKpi icon={ListChecks} label="Tarefas" value={total.tarefas} />
+        <MiniKpi icon={Users} label="Membros" value={total.membros} onClick={onNavigateMembros} />
+        <MiniKpi icon={Wrench} label="Ferramentas" value={total.ferramentas} />
+      </div>
 
-        {/* Coluna lateral - distribuições */}
-        <div className="space-y-6">
-          {/* Distribuição por tipo */}
+      {/* Distribuição + Actividade recente */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Distribuições */}
+        <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -128,7 +172,7 @@ export function DashboardView({
                   const pct = Math.round((p._count / totalProcessos) * 100)
                   return (
                     <div key={p.tipo}>
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5">
                           <span className={cn("w-2 h-2 rounded-full", TIPO_DOT[p.tipo])} />
                           <span className="text-xs font-medium">{p.tipo}</span>
@@ -137,8 +181,7 @@ export function DashboardView({
                       </div>
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={cn(
-                            "h-full rounded-full transition-all",
+                          className={cn("h-full rounded-full",
                             p.tipo === 'Inbound' && 'bg-emerald-500',
                             p.tipo === 'Outbound' && 'bg-orange-500',
                             p.tipo === 'Gestão' && 'bg-violet-500'
@@ -153,7 +196,6 @@ export function DashboardView({
             </CardContent>
           </Card>
 
-          {/* Distribuição por frequência */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -176,86 +218,115 @@ export function DashboardView({
             </CardContent>
           </Card>
         </div>
-      </div>
 
-      {/* Tarefas recentes */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ListChecks className="w-4 h-4 text-primary" />
-            Tarefas Recentes
-          </CardTitle>
-          <CardDescription className="text-xs">Últimas tarefas criadas no sistema</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {data.tarefasRecentes.length === 0 ? (
-            <div className="text-center py-8">
-              <ListChecks className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma tarefa criada ainda.</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {data.tarefasRecentes.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/40 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0">
-                    <ListChecks className="w-4 h-4 text-sky-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{t.nome}</p>
-                    <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-                      {t.actividade.processo?.area?.nome}
-                      <ChevronRight className="w-2.5 h-2.5" />
-                      {t.actividade.processo?.nome}
-                      <ChevronRight className="w-2.5 h-2.5" />
-                      {t.actividade.nome}
-                    </p>
-                  </div>
-                  {t.actividade.processo?.tipo && (
-                    <Badge variant="outline" className={cn("text-[10px] py-0 hidden sm:inline-flex", TIPO_COLORS[t.actividade.processo.tipo])}>
-                      {t.actividade.processo.tipo}
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Actividade recente */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-primary" />
+              Actividade Recente
+            </CardTitle>
+            <CardDescription className="text-xs">Últimas alterações no sistema</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {data.actividadesRecentes.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">Sem actividade recente.</p>
+            ) : (
+              <ol className="space-y-2">
+                {data.actividadesRecentes.map((a, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm">
+                    <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {a.tipo === 'área' ? <Building2 className="w-3 h-3 text-muted-foreground" /> :
+                       a.tipo === 'processo' ? <Workflow className="w-3 h-3 text-muted-foreground" /> :
+                       <ListChecks className="w-3 h-3 text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate">
+                        <span className="font-medium">{a.nome}</span>
+                        <span className="text-muted-foreground"> · {a.tipo}</span>
+                        {a.areaNome && <span className="text-muted-foreground"> · {a.areaNome}</span>}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{timeAgo(a.updatedAt)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
 
-function KpiCard({
-  icon: Icon, label, value, color, onClick
+/* ============== Alert Card ============== */
+function AlertCard({
+  icon: Icon, color, title, count, items, extra, cta, onClick
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  color: 'rose' | 'amber'
+  title: string
+  count: number
+  items?: string[]
+  extra?: string
+  cta: string
+  onClick: () => void
+}) {
+  const colors = {
+    rose: { bg: 'bg-rose-50', border: 'border-rose-200', icon: 'bg-rose-100 text-rose-600', count: 'text-rose-700' },
+    amber: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'bg-amber-100 text-amber-600', count: 'text-amber-700' },
+  }
+  const c = colors[color]
+  return (
+    <Card className={cn(c.border, c.bg)}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3 mb-2">
+          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", c.icon)}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">{title}</p>
+            <p className={cn("text-2xl font-bold leading-none mt-1", c.count)}>{count}</p>
+            {extra && <p className="text-xs text-muted-foreground mt-0.5">{extra}</p>}
+          </div>
+        </div>
+        {items && items.length > 0 && (
+          <ul className="text-xs text-muted-foreground space-y-0.5 mb-2 pl-1">
+            {items.map((item, i) => <li key={i} className="truncate">• {item}</li>)}
+            {count > items.length && <li className="italic">+{count - items.length} outros</li>}
+          </ul>
+        )}
+        <Button variant="ghost" size="sm" onClick={onClick} className="text-xs h-7 px-2">
+          {cta} <ArrowRight className="w-3 h-3 ml-1" />
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ============== Mini KPI ============== */
+function MiniKpi({
+  icon: Icon, label, value, onClick
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   value: number
-  color: 'emerald' | 'orange' | 'violet' | 'sky' | 'rose' | 'teal'
   onClick?: () => void
 }) {
-  const colors: Record<string, string> = {
-    emerald: 'bg-emerald-500',
-    orange: 'bg-orange-500',
-    violet: 'bg-violet-500',
-    sky: 'bg-sky-500',
-    rose: 'bg-rose-500',
-    teal: 'bg-teal-500',
-  }
   const Comp = onClick ? 'button' : 'div'
   return (
     <Comp
       onClick={onClick}
       className={cn(
-        "text-left rounded-xl border border-border bg-card p-4 transition-all",
-        onClick && "hover:shadow-md hover:border-primary/30 cursor-pointer"
+        "text-left rounded-lg border border-border bg-card p-2.5 transition-all",
+        onClick && "hover:border-primary/30 hover:bg-muted/30 cursor-pointer"
       )}
     >
-      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center mb-2.5", colors[color])}>
-        <Icon className="w-4 h-4 text-white" />
+      <div className="flex items-center gap-1.5 mb-1">
+        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-lg font-bold leading-none">{value}</span>
       </div>
-      <div className="text-2xl font-bold leading-none">{value}</div>
-      <div className="text-[11px] text-muted-foreground mt-1.5">{label}</div>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
     </Comp>
   )
 }

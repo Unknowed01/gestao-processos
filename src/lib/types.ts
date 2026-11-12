@@ -147,7 +147,19 @@ export interface DashboardData {
     id: string
     nome: string
     objectivos?: string | null
-    _count: { processos: number; membros: number; ferramentas: number }
+    _count: { processos: number; membros: number }
+  }>
+  alerts: {
+    areasSemProcessos: Array<{ id: string; nome: string }>
+    processosSemResponsavel: Array<{ id: string; nome: string; area: { id: string; nome: string } | null }>
+    tarefasSemInstrucoes: { count: number; total: number }
+  }
+  actividadesRecentes: Array<{
+    tipo: string
+    nome: string
+    updatedAt: string
+    id: string
+    areaNome?: string | null
   }>
 }
 

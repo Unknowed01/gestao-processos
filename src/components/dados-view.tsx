@@ -120,7 +120,7 @@ export function DadosView({ areas }: { areas: Area[] }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
           <Database className="w-7 h-7 text-primary" />
           Gestão de Dados
         </h1>

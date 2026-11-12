@@ -5,7 +5,8 @@ import { toast } from 'sonner'
 import {
   LayoutGrid, Building2, Users, Wrench, Database,
   Menu, Workflow, ListChecks, Activity,
-  Mail, UserPlus, Search, Trash2, Plus, MoreVertical, Pencil
+  Mail, UserPlus, Search, Trash2, Plus, MoreVertical, Pencil,
+  ChevronsLeft, ChevronsRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -69,6 +70,28 @@ const fetcher = async <T,>(url: string, opts?: RequestInit): Promise<T> => {
 export default function Home() {
   const [view, setView] = useState<ViewState>({ level: 'dashboard' })
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // Persistir preferência da sidebar
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('sidebar.collapsed') : null
+    if (saved !== null) setSidebarCollapsed(JSON.parse(saved))
+  }, [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') localStorage.setItem('sidebar.collapsed', JSON.stringify(sidebarCollapsed))
+  }, [sidebarCollapsed])
+
+  // Atalho Ctrl+B / Cmd+B para recolher/expandir sidebar
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault()
+        setSidebarCollapsed(c => !c)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   // Estado de dados
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
@@ -451,26 +474,46 @@ export default function Home() {
         <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar recolhível */}
       <aside
         className={cn(
-          "fixed lg:sticky top-0 left-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col z-40 transition-transform duration-300",
+          "fixed lg:sticky top-0 left-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col z-40 transition-all duration-200 ease-out",
+          sidebarCollapsed ? "w-16" : "w-64",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
+        aria-label="Navegação principal"
       >
-        <div className="p-5 border-b border-sidebar-border">
-          <button onClick={goToDashboard} className="flex items-center gap-3 text-left">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+        {/* Header com toggle */}
+        <div className="p-3 border-b border-sidebar-border flex items-center justify-between">
+          <button
+            onClick={goToDashboard}
+            className="flex items-center gap-2.5 text-left overflow-hidden"
+            aria-label="Ir para Dashboard"
+          >
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm flex-shrink-0">
               <Workflow className="w-5 h-5 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-foreground leading-tight">Gestão de Processos</h1>
-              <p className="text-[11px] text-muted-foreground">Sistema Operacional</p>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="overflow-hidden">
+                <h1 className="text-sm font-bold text-foreground leading-tight whitespace-nowrap">Gestão de Processos</h1>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">Sistema Operacional</p>
+              </div>
+            )}
           </button>
+          {!sidebarCollapsed && (
+            <button
+              onClick={() => setSidebarCollapsed(true)}
+              aria-label="Recolher menu"
+              title="Recolher menu (Ctrl+B)"
+              className="p-1.5 rounded hover:bg-sidebar-accent text-muted-foreground flex-shrink-0"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+        {/* Nav */}
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {NAV.map((item) => {
             const Icon = item.icon
             const isActive = activeNav === item.id
@@ -489,30 +532,49 @@ export default function Home() {
                   else if (item.id === 'dados') goToDados()
                   setSidebarOpen(false)
                 }}
+                title={sidebarCollapsed ? `${item.label}${count !== undefined ? ` (${count})` : ''}` : undefined}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "w-full flex items-center rounded-lg text-sm font-medium transition-colors relative",
+                  sidebarCollapsed ? "justify-center p-3" : "gap-3 px-3 py-2",
                   isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
+                aria-current={isActive ? 'page' : undefined}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="flex-1 text-left">{item.label}</span>
-                {count !== undefined && (
+                {!sidebarCollapsed && <span className="flex-1 text-left">{item.label}</span>}
+                {!sidebarCollapsed && count !== undefined && (
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-semibold",
-                    isActive ? "bg-white/30 text-white" : "bg-sidebar-accent text-muted-foreground"
+                    isActive ? "bg-white/40 text-white" : "bg-sidebar-accent text-muted-foreground"
                   )}>
                     {count}
                   </span>
+                )}
+                {/* Dot indicator quando recolhido */}
+                {sidebarCollapsed && count !== undefined && count > 0 && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
                 )}
               </button>
             )
           })}
         </nav>
 
-        <div className="p-3 border-t border-sidebar-border">
-          <p className="text-xs text-muted-foreground text-center">
-            {dashboard ? `${dashboard.counts.areas} áreas · ${dashboard.counts.processos} processos · ${dashboard.counts.tarefas} tarefas` : '—'}
-          </p>
+        {/* Rodapé */}
+        <div className="p-2 border-t border-sidebar-border">
+          {sidebarCollapsed ? (
+            <button
+              onClick={() => setSidebarCollapsed(false)}
+              aria-label="Expandir menu"
+              title="Expandir menu (Ctrl+B)"
+              className="w-full p-2 rounded hover:bg-sidebar-accent text-muted-foreground flex justify-center"
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center px-1">
+              {dashboard ? `${dashboard.counts.areas} áreas · ${dashboard.counts.processos} processos · ${dashboard.counts.tarefas} tarefas` : '—'}
+            </p>
+          )}
         </div>
       </aside>
 
@@ -847,7 +909,7 @@ function MembrosListView({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Membros da Equipa</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Membros da Equipa</h1>
           <p className="text-muted-foreground mt-1 text-sm">Todos os membros cadastrados no sistema. {filtered.length !== membros.length && `A mostrar ${filtered.length} de ${membros.length}.`}</p>
         </div>
         <Button onClick={onCreate}><UserPlus className="w-4 h-4 mr-2" /> Novo Membro</Button>
@@ -902,39 +964,36 @@ function MembroListCard({
   onEdit: () => void
   onDelete: () => void
 }) {
+  const totalResp = (membro._count?.procResp ?? 0) + (membro._count?.actResp ?? 0)
+  const totalSub = (membro._count?.procSubst ?? 0) + (membro._count?.actSubst ?? 0)
   return (
-    <Card className="group relative">
-      <CardContent className="p-4 pr-10">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-sm flex-shrink-0">
+    <Card className="group relative transition-all hover:shadow-md hover:-translate-y-0.5">
+      <CardContent className="p-3 pr-9">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center font-semibold text-xs flex-shrink-0">
             {iniciais}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-sm truncate">{membro.nome}</h3>
             {membro.cargo && <p className="text-xs text-muted-foreground truncate">{membro.cargo}</p>}
             {membro.area && (
-              <Badge variant="outline" className="mt-1 text-[10px] py-0">
+              <Badge variant="outline" className="mt-0.5 text-[10px] py-0">
                 <Building2 className="w-2.5 h-2.5 mr-1" />{membro.area.nome}
               </Badge>
             )}
           </div>
         </div>
         {membro.email && (
-          <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
             <Mail className="w-3 h-3" /><span className="truncate">{membro.email}</span>
           </div>
         )}
-        <Separator className="my-3" />
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="text-center p-1.5 rounded-md bg-muted/50">
-            <div className="font-semibold">{(membro._count?.procResp ?? 0) + (membro._count?.actResp ?? 0)}</div>
-            <div className="text-muted-foreground text-[10px]">Responsável</div>
+        {(totalResp > 0 || totalSub > 0) && (
+          <div className="flex gap-1.5 mt-2">
+            {totalResp > 0 && <Badge variant="outline" className="text-[10px] py-0 h-5 bg-emerald-50 text-emerald-700 border-emerald-200">{totalResp} resp.</Badge>}
+            {totalSub > 0 && <Badge variant="outline" className="text-[10px] py-0 h-5 bg-amber-50 text-amber-700 border-amber-200">{totalSub} subst.</Badge>}
           </div>
-          <div className="text-center p-1.5 rounded-md bg-muted/50">
-            <div className="font-semibold">{(membro._count?.procSubst ?? 0) + (membro._count?.actSubst ?? 0)}</div>
-            <div className="text-muted-foreground text-[10px]">Substituto</div>
-          </div>
-        </div>
+        )}
       </CardContent>
       <div className="absolute top-2 right-2 z-10">
         <ActionMenu onEdit={onEdit} onDelete={onDelete} />
@@ -964,7 +1023,7 @@ function FerramentasListView({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Ferramentas</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Ferramentas</h1>
           <p className="text-muted-foreground mt-1 text-sm">Ferramentas de trabalho usadas nas tarefas. {filtered.length !== ferramentas.length && `A mostrar ${filtered.length} de ${ferramentas.length}.`}</p>
         </div>
         <Button onClick={onCreate}><Plus className="w-4 h-4 mr-2" /> Nova Ferramenta</Button>
