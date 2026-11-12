@@ -52,6 +52,12 @@ export const membroAssociateSchema = z.object({
   areaId: cuid,
 })
 
+// ID opcional: string vazia → null (formulários enviam "" quando "Sem responsável")
+const idOpcionalNull = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+  z.string().min(1).max(50).nullable().optional()
+)
+
 // ============== Processo ==============
 export const processoCreateSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório').max(200),
@@ -63,8 +69,8 @@ export const processoCreateSchema = z.object({
   kpis: z.string().trim().max(5000).nullable().optional(),
   obrigacoes: z.string().trim().max(5000).nullable().optional(),
   areaId: cuid,
-  responsavelId: z.string().min(1).nullable().optional(),
-  substitutoId: z.string().min(1).nullable().optional(),
+  responsavelId: idOpcionalNull,
+  substitutoId: idOpcionalNull,
 }).refine(
   (data) => !(data.responsavelId && data.substitutoId && data.responsavelId === data.substitutoId),
   { message: 'O responsável e o substituto não podem ser a mesma pessoa', path: ['substitutoId'] }
@@ -79,8 +85,8 @@ export const processoUpdateSchema = z.object({
   kpis: z.string().trim().max(5000).nullable().optional(),
   obrigacoes: z.string().trim().max(5000).nullable().optional(),
   areaId: cuid,
-  responsavelId: z.string().min(1).nullable().optional(),
-  substitutoId: z.string().min(1).nullable().optional(),
+  responsavelId: idOpcionalNull,
+  substitutoId: idOpcionalNull,
 })
 
 // ============== Actividade ==============
@@ -91,8 +97,8 @@ export const actividadeCreateSchema = z.object({
     message: 'Frequência inválida',
   }),
   processoId: cuid,
-  responsavelId: z.string().min(1).nullable().optional(),
-  substitutoId: z.string().min(1).nullable().optional(),
+  responsavelId: idOpcionalNull,
+  substitutoId: idOpcionalNull,
 }).refine(
   (data) => !(data.responsavelId && data.substitutoId && data.responsavelId === data.substitutoId),
   { message: 'O responsável e o substituto não podem ser a mesma pessoa', path: ['substitutoId'] }
@@ -104,8 +110,8 @@ export const actividadeUpdateSchema = z.object({
   descricao: stringOpcional,
   frequencia: z.enum(['Diária', 'Semanal', 'Mensal', 'Trimestral', 'Semestral', 'Anual', 'Programada']),
   processoId: cuid,
-  responsavelId: z.string().min(1).nullable().optional(),
-  substitutoId: z.string().min(1).nullable().optional(),
+  responsavelId: idOpcionalNull,
+  substitutoId: idOpcionalNull,
 })
 
 // ============== Tarefa ==============
