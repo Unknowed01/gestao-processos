@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ComponentType, type ReactNode } from 'react'
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { Area } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { getAreaIcon } from '@/lib/area-icons'
 
 // ============== Estrutura do organograma ==============
 // Comissão Executiva
@@ -20,11 +19,11 @@ import { getAreaIcon } from '@/lib/area-icons'
 //  └─ Áreas de Controlo (reportam directamente à Comissão Executiva)
 
 interface Tone {
-  solid: string
-  soft: string
-  border: string
-  text: string
-  hover: string
+  solid: string   // fundo do ícone / barra de destaque
+  soft: string    // fundo do nó do responsável
+  border: string  // borda do nó do responsável
+  text: string    // texto de destaque
+  hover: string   // borda ao passar o rato numa área
 }
 
 interface Grupo {
@@ -143,22 +142,23 @@ export function OrganogramaView({
 
   const matches = (a: Area) => !pesquisa || norm(a.nome).includes(norm(pesquisa))
 
-  const grupos = GRUPOS.map(g => {
+  const grupos = useMemo(() => GRUPOS.map(g => {
     const todas = g.areaNomes
       .map(nome => areas.find(a => a.nome === nome))
       .filter((a): a is Area => !!a)
     return {
       ...g,
       todas,
-      areas: todas.filter(matches),
+      areas: todas.filter(a => !pesquisa || norm(a.nome).includes(norm(pesquisa))),
       processos: todas.reduce((n, a) => n + (a._count?.processos ?? 0), 0),
       membros: todas.reduce((n, a) => n + (a._count?.membros ?? 0), 0),
     }
-  })
+  }), [areas, pesquisa])
 
-  const nomesPadrao = new Set(GRUPOS.flatMap(g => g.areaNomes))
-  const areasSemGrupo = areas.filter(a => !nomesPadrao.has(a.nome) && matches(a))
+  const nomesPadrao = useMemo(() => new Set(GRUPOS.flatMap(g => g.areaNomes)), [])
+  const areasSemGrupo = areas.filter(a => !nomesPadrao.has(a.nome) && (!pesquisa || norm(a.nome).includes(norm(pesquisa))))
 
+  // Com pesquisa activa, só mostra os grupos com resultados
   const visiveis = grupos.filter(g => (pesquisa ? g.areas.length > 0 : true))
   const totalEncontrado = grupos.reduce((n, g) => n + g.areas.length, 0) + areasSemGrupo.length
 
@@ -181,7 +181,7 @@ export function OrganogramaView({
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Organograma</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Organograma</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Estrutura organizacional da companhia. Clique numa área para ver os seus processos.
           </p>
@@ -369,8 +369,10 @@ function Ramo({
                 key={area.id}
                 className={cn(
                   'relative pl-6 pt-2.5',
+                  // linha vertical (a última termina na altura do ramo horizontal)
                   "before:absolute before:left-0 before:top-0 before:h-full before:w-px before:content-['']",
                   "before:bg-slate-300 dark:before:bg-slate-700 last:before:h-[1.875rem]",
+                  // ramo horizontal
                   "after:absolute after:left-0 after:top-[1.875rem] after:h-px after:w-5 after:content-['']",
                   'after:bg-slate-300 dark:after:bg-slate-700',
                 )}
@@ -385,7 +387,7 @@ function Ramo({
   )
 }
 
-// ============== Nó de área (com ícone temático) ==============
+// ============== Nó de área ==============
 function AreaNode({
   area, tone, pesquisa, onClick,
 }: { area: Area; tone: Tone; pesquisa: string; onClick: () => void }) {
@@ -403,8 +405,7 @@ function AreaNode({
     >
       <span aria-hidden className={cn('absolute inset-y-0 left-0 w-1', tone.solid)} />
       <span className="flex items-start justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-sm font-medium leading-snug">
-          <AreaIcon name={area.nome} className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+        <span className="text-sm font-medium leading-snug">
           <Highlight text={area.nome} query={pesquisa} />
         </span>
         <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -422,12 +423,6 @@ function AreaNode({
       </span>
     </button>
   )
-}
-
-function AreaIcon({ name, className }: { name: string; className?: string }) {
-  const IconComp = getAreaIcon(name)
-  // eslint-disable-next-line react-hooks/static-components
-  return <IconComp className={className} />
 }
 
 // ============== Peças auxiliares ==============

@@ -10,30 +10,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info, CheckCircle2 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Tarefa, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { emailValido } from '@/lib/email'
-
-/* ============== Componente de erro inline reutilizável ============== */
-function InlineError({ message }: { message: string }) {
-  return (
-    <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
-      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-      <span>{message}</span>
-    </div>
-  )
-}
-
-// Helper para detectar campo problemático por mensagem
-function detectErrorField(msg: string): string | undefined {
-  if (/email/i.test(msg)) return 'email'
-  if (/responsavel|substituto/i.test(msg)) return 'responsavel'
-  if (/nome/i.test(msg)) return 'nome'
-  if (/area/i.test(msg)) return 'area'
-  return undefined
-}
 
 /* ============== Modal: Área (Criar/Editar) ============== */
 export interface AreaFormData { nome: string; descricao: string; objectivos: string }
@@ -49,7 +30,6 @@ export function AreaFormDialog({
 }) {
   const [form, setForm] = useState<AreaFormData>({ nome: '', descricao: '', objectivos: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -58,19 +38,15 @@ export function AreaFormDialog({
         descricao: initial?.descricao ?? '',
         objectivos: initial?.objectivos ?? '',
       })
-      setServerError(null)
     }
   }, [open, initial])
 
   const submit = async () => {
     if (!form.nome.trim()) return
     setSubmitting(true)
-    setServerError(null)
     try {
       await onSubmit(form)
       onOpenChange(false)
-    } catch (e) {
-      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -87,19 +63,17 @@ export function AreaFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {serverError && <InlineError message={serverError} />}
-          {serverError && <InlineError message={serverError} />}
           <div className="space-y-2">
             <Label htmlFor="area-nome">Nome *</Label>
-            <Input id="area-nome" value={form.nome} onChange={e => { setForm({ ...form, nome: e.target.value }); setServerError(null) }} placeholder="Ex: Corretagem" />
+            <Input id="area-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Corretagem" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="area-desc">Descrição</Label>
-            <Textarea id="area-desc" value={form.descricao} onChange={e => { setForm({ ...form, descricao: e.target.value }); setServerError(null) }} rows={2} />
+            <Textarea id="area-desc" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={2} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="area-obj">Objectivos</Label>
-            <Input id="area-obj" value={form.objectivos} onChange={e => { setForm({ ...form, objectivos: e.target.value }); setServerError(null) }} placeholder="Ex: Crescimento da produção" />
+            <Input id="area-obj" value={form.objectivos} onChange={e => setForm({ ...form, objectivos: e.target.value })} placeholder="Ex: Crescimento da produção" />
           </div>
         </div>
         <DialogFooter>
@@ -132,7 +106,6 @@ export function MembroFormDialog({
 }) {
   const [form, setForm] = useState<MembroFormData>({ nome: '', email: '', cargo: '', areaId: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const [sugestoes, setSugestoes] = useState<Membro[]>([])
   const [membroSelecionado, setMembroSelecionado] = useState<Membro | null>(null)
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
@@ -150,7 +123,6 @@ export function MembroFormDialog({
       setMembroSelecionado(null)
       setSugestoes([])
       setMostrarSugestoes(false)
-      setServerError(null)
     }
   }, [open, initial, lockedAreaId])
 
@@ -186,7 +158,6 @@ export function MembroFormDialog({
     if (!form.nome.trim()) return
     if (emailErro) { setEmailTocado(true); return }
     setSubmitting(true)
-    setServerError(null)
     try {
       if (isAssociar && onAssociate) {
         await onAssociate({ membroId: membroSelecionado!.id, areaId: lockedAreaId! })
@@ -194,8 +165,9 @@ export function MembroFormDialog({
         await onSubmit({ ...form, email: form.email.trim() })
       }
       onOpenChange(false)
-    } catch (e) {
-      setServerError((e as Error).message)
+    } catch {
+      // O erro já foi apresentado (toast) por quem tratou o pedido: mantém o diálogo aberto
+      // para o utilizador poder corrigir os dados sem os perder.
     } finally { setSubmitting(false) }
   }
 
@@ -217,7 +189,6 @@ export function MembroFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {serverError && <InlineError message={serverError} />}
           {/* Campo Nome — com autocomplete quando showCombobox */}
           <div className="space-y-2 relative">
             <Label htmlFor="m-nome">Nome completo *</Label>
@@ -350,7 +321,6 @@ export function ProcessoFormDialog({
     areaId: '', responsavelId: '', substitutoId: ''
   })
   const [submitting, setSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const [erroValidacao, setErroValidacao] = useState('')
 
   useEffect(() => {
@@ -395,12 +365,9 @@ export function ProcessoFormDialog({
     }
     setErroValidacao('')
     setSubmitting(true)
-    setServerError(null)
     try {
       await onSubmit(form)
       onOpenChange(false)
-    } catch (e) {
-      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -429,7 +396,6 @@ export function ProcessoFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {serverError && <InlineError message={serverError} />}
           <div className="space-y-2">
             <Label htmlFor="p-nome">Nome do processo *</Label>
             <Input id="p-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Processo de Corretagem" />
@@ -574,7 +540,6 @@ export function ActividadeFormDialog({
     processoId: '', responsavelId: '', substitutoId: ''
   })
   const [submitting, setSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const [erroValidacao, setErroValidacao] = useState('')
 
   useEffect(() => {
@@ -610,12 +575,9 @@ export function ActividadeFormDialog({
     }
     setErroValidacao('')
     setSubmitting(true)
-    setServerError(null)
     try {
       await onSubmit(form)
       onOpenChange(false)
-    } catch (e) {
-      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -646,7 +608,6 @@ export function ActividadeFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {serverError && <InlineError message={serverError} />}
           <div className="space-y-2">
             <Label htmlFor="a-nome">Nome da actividade *</Label>
             <Input id="a-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Responder e-mails ARSEG" />
@@ -746,7 +707,6 @@ export function TarefaFormDialog({
     actividadeId: '', ferramentaIds: [], procedimentos: [{ descricao: '' }]
   })
   const [submitting, setSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
   const [ferramentaBusca, setFerramentaBusca] = useState('')
   const [mostrarFerramentaSugestoes, setMostrarFerramentaSugestoes] = useState(false)
   const [ferramentasLocais, setFerramentasLocais] = useState<Ferramenta[]>([])
@@ -812,12 +772,9 @@ export function TarefaFormDialog({
   const submit = async () => {
     if (!form.nome.trim() || !form.actividadeId || !form.inputs.trim() || !form.outputs.trim()) return
     setSubmitting(true)
-    setServerError(null)
     try {
       await onSubmit({ ...form, procedimentos: form.procedimentos.filter(p => p.descricao.trim()) })
       onOpenChange(false)
-    } catch (e) {
-      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -834,7 +791,6 @@ export function TarefaFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
-          {serverError && <InlineError message={serverError} />}
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="t-nome">Nome da tarefa *</Label>
@@ -1026,7 +982,6 @@ export function FerramentaFormDialog({
 }) {
   const [form, setForm] = useState<FerramentaFormData>({ nome: '', descricao: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -1040,12 +995,9 @@ export function FerramentaFormDialog({
   const submit = async () => {
     if (!form.nome.trim()) return
     setSubmitting(true)
-    setServerError(null)
     try {
       await onSubmit(form)
       onOpenChange(false)
-    } catch (e) {
-      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -1062,7 +1014,6 @@ export function FerramentaFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {serverError && <InlineError message={serverError} />}
           <div className="space-y-2">
             <Label htmlFor="f-nome">Nome *</Label>
             <Input id="f-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Outlook" />
