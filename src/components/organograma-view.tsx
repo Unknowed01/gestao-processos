@@ -7,10 +7,11 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Building2, ChevronRight, Search, Crown, Briefcase, Shield,
-  Workflow, Users, Wrench, Plus
+  Workflow, Users, Plus
 } from 'lucide-react'
 import { Area } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { getAreaIcon } from '@/lib/area-icons'
 
 // Grupos de áreas conforme o organograma da empresa
 interface GrupoOrganograma {
@@ -222,7 +223,7 @@ function GrupoColumn({
           fullWidth ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"
         )}>
           {grupo.areas.map((area, idx) => (
-            <AreaTile key={area.id} area={area} onClick={() => onOpenArea(area.id)} index={idx} />
+            <AreaTile key={area.id} area={area} onClick={() => onOpenArea(area.id)} index={idx} borderColor={grupo.color.border} />
           ))}
         </div>
       )}
@@ -230,27 +231,37 @@ function GrupoColumn({
   )
 }
 
-function AreaTile({ area, onClick, index = 0 }: { area: Area; onClick: () => void; index?: number }) {
+function AreaIcon({ name, className }: { name: string; className?: string }) {
+  const IconComp = getAreaIcon(name)
+  // eslint-disable-next-line react-hooks/static-components
+  return <IconComp className={className} />
+}
+
+function AreaTile({ area, onClick, index = 0, borderColor }: { area: Area; onClick: () => void; index?: number; borderColor?: string }) {
+  const procCount = area._count?.processos ?? 0
+  const membCount = area._count?.membros ?? 0
+  // Mapear cores do grupo para classes de border-l
+  const borderClass = borderColor?.includes('slate') ? 'border-l-slate-400'
+    : borderColor?.includes('amber') ? 'border-l-amber-400'
+    : borderColor?.includes('violet') ? 'border-l-violet-400'
+    : borderColor?.includes('rose') ? 'border-l-rose-400'
+    : 'border-l-primary'
   return (
     <button
       onClick={onClick}
-      className="group text-left p-3 rounded-lg border border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all"
+      className={cn("group text-left p-2.5 rounded-lg border border-border border-l-4 bg-card hover:shadow-md hover:-translate-y-0.5 transition-all", borderClass)}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Building2 className="w-3.5 h-3.5 text-primary" />
+      <div className="flex items-center gap-2">
+        <AreaIcon name={area.nome} className="w-4 h-4 flex-shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+        <span className="text-sm font-medium truncate flex-1">{area.nome}</span>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+      </div>
+      {(procCount > 0 || membCount > 0) && (
+        <div className="flex gap-2 mt-1 ml-6 text-[11px] text-muted-foreground">
+          {procCount > 0 && <span className="flex items-center gap-0.5"><Workflow className="w-2.5 h-2.5" />{procCount}</span>}
+          {membCount > 0 && <span className="flex items-center gap-0.5"><Users className="w-2.5 h-2.5" />{membCount}</span>}
         </div>
-        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-      </div>
-      <p className="text-sm font-medium leading-tight mb-2 line-clamp-2">{area.nome}</p>
-      <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
-        <span className="flex items-center gap-0.5" title="Processos">
-          <Workflow className="w-2.5 h-2.5" />{area._count?.processos ?? 0}
-        </span>
-        <span className="flex items-center gap-0.5" title="Membros">
-          <Users className="w-2.5 h-2.5" />{area._count?.membros ?? 0}
-        </span>
-      </div>
+      )}
     </button>
   )
 }

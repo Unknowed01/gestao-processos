@@ -6,7 +6,7 @@ import {
   LayoutGrid, Building2, Users, Wrench, Database,
   Menu, Workflow, ListChecks, Activity,
   Mail, UserPlus, Search, Trash2, Plus, MoreVertical, Pencil,
-  ChevronsLeft, ChevronsRight
+  ChevronsLeft, ChevronsRight, List
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -273,7 +273,7 @@ export default function Home() {
       await fetcher('/api/areas', { method: 'POST', body: JSON.stringify(data) })
       toast.success('Área criada com sucesso!')
       await loadAreas(); await loadDashboard()
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleCreateMembro = async (data: MembroFormData) => {
@@ -282,7 +282,7 @@ export default function Home() {
       toast.success('Membro criado com sucesso!')
       await loadMembros(); await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleAssociateMembro = async (data: MembroAssociarData) => {
@@ -295,7 +295,7 @@ export default function Home() {
       toast.success('Membro associado à área com sucesso!')
       await loadMembros(); await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleCreateProcesso = async (data: ProcessoFormData) => {
@@ -304,7 +304,7 @@ export default function Home() {
       toast.success('Processo criado com sucesso!')
       await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleCreateActividade = async (data: ActividadeFormData) => {
@@ -313,7 +313,7 @@ export default function Home() {
       toast.success('Actividade criada com sucesso!')
       await loadDashboard()
       if (view.processoId) await loadProcessoDetalhe(view.processoId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleCreateTarefa = async (data: TarefaFormData) => {
@@ -322,7 +322,7 @@ export default function Home() {
       toast.success('Tarefa criada com sucesso!')
       await loadDashboard()
       if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleCreateFerramenta = async (data: FerramentaFormData) => {
@@ -331,7 +331,7 @@ export default function Home() {
       toast.success('Ferramenta criada com sucesso!')
       await loadFerramentas(); await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   // ===== Handlers de edição =====
@@ -343,7 +343,7 @@ export default function Home() {
       setEditArea(null)
       await loadAreas(); await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleEditMembro = async (data: MembroFormData) => {
@@ -354,7 +354,7 @@ export default function Home() {
       setEditMembro(null)
       await loadMembros(); await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleEditProcesso = async (data: ProcessoFormData) => {
@@ -366,7 +366,7 @@ export default function Home() {
       await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
       if (view.processoId) await loadProcessoDetalhe(view.processoId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleEditActividade = async (data: ActividadeFormData) => {
@@ -378,7 +378,7 @@ export default function Home() {
       await loadDashboard()
       if (view.processoId) await loadProcessoDetalhe(view.processoId)
       if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleEditTarefa = async (data: TarefaFormData) => {
@@ -403,7 +403,7 @@ export default function Home() {
       await loadDashboard()
       if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
       if (view.tarefaId) await loadTarefaDetalhe(view.tarefaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   const handleEditFerramenta = async (data: FerramentaFormData) => {
@@ -414,7 +414,7 @@ export default function Home() {
       setEditFerramenta(null)
       await loadFerramentas(); await loadDashboard()
       if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
   }
 
   // ===== Handlers de eliminação =====
@@ -451,7 +451,7 @@ export default function Home() {
         if (view.processoId) await loadProcessoDetalhe(view.processoId)
         if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
       }
-    } catch (e) { toast.error((e as Error).message) }
+    } catch (e) { toast.error((e as Error).message); throw e }
     finally { setDeleting(false) }
   }
 
@@ -897,6 +897,7 @@ function MembrosListView({
 }) {
   const [search, setSearch] = useState('')
   const [areaFilter, setAreaFilter] = useState('all')
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const filtered = membros.filter(m => {
     const matchSearch = m.nome.toLowerCase().includes(search.toLowerCase()) ||
       m.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -921,12 +922,21 @@ function MembrosListView({
           <Input placeholder="Pesquisar membro..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={areaFilter} onValueChange={setAreaFilter}>
-          <SelectTrigger className="w-full sm:w-56"><SelectValue placeholder="Filtrar por área" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-56" aria-label="Filtrar por área"><SelectValue placeholder="Filtrar por área" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas as áreas</SelectItem>
             {areas.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
           </SelectContent>
         </Select>
+        {/* Toggle vista */}
+        <div className="flex border border-border rounded-md overflow-hidden">
+          <button onClick={() => setViewMode('list')} className={cn("px-3 py-1.5 text-xs font-medium", viewMode === 'list' ? "bg-primary text-primary-foreground" : "hover:bg-muted")} aria-label="Vista lista">
+            <List className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => setViewMode('cards')} className={cn("px-3 py-1.5 text-xs font-medium", viewMode === 'cards' ? "bg-primary text-primary-foreground" : "hover:bg-muted")} aria-label="Vista cards">
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -942,6 +952,42 @@ function MembrosListView({
             </Button>
           </CardContent>
         </Card>
+      ) : viewMode === 'list' ? (
+        /* Vista lista densa */
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border">
+            <span>Nome</span>
+            <span>Cargo / Área</span>
+            <span className="text-right">Resp.</span>
+          </div>
+          <div className="divide-y divide-border">
+            {filtered.map(m => {
+              const iniciais = m.nome.trim().split(/\s+/).map(p => p[0] || '').slice(0, 2).join('').toUpperCase() || '?'
+              const totalResp = (m._count?.procResp ?? 0) + (m._count?.actResp ?? 0)
+              const totalSub = (m._count?.procSubst ?? 0) + (m._count?.actSubst ?? 0)
+              return (
+                <div key={m.id} className="group grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 hover:bg-muted/40 transition-colors text-sm items-center">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center text-[10px] font-semibold flex-shrink-0">{iniciais}</div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{m.nome}</p>
+                      {m.email && <p className="text-[11px] text-muted-foreground truncate">{m.email}</p>}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs truncate">{m.cargo || '—'}</p>
+                    {m.area && <p className="text-[11px] text-muted-foreground truncate">{m.area.nome}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    {totalResp > 0 && <Badge variant="outline" className="text-[10px] py-0 h-5 bg-emerald-50 text-emerald-700 border-emerald-200">{totalResp}R</Badge>}
+                    {totalSub > 0 && <Badge variant="outline" className="text-[10px] py-0 h-5 bg-amber-50 text-amber-700 border-amber-200">{totalSub}S</Badge>}
+                    <ActionMenu onEdit={() => onEdit(m)} onDelete={() => onDelete(m)} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((m) => {
@@ -1015,6 +1061,7 @@ function FerramentasListView({
   onDelete: (f: Ferramenta) => void
 }) {
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const filtered = ferramentas.filter(f =>
     f.nome.toLowerCase().includes(search.toLowerCase()) ||
     f.descricao?.toLowerCase().includes(search.toLowerCase())
@@ -1029,9 +1076,19 @@ function FerramentasListView({
         <Button onClick={onCreate}><Plus className="w-4 h-4 mr-2" /> Nova Ferramenta</Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Pesquisar ferramenta..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Pesquisar ferramenta..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex border border-border rounded-md overflow-hidden">
+          <button onClick={() => setViewMode('list')} className={cn("px-3 py-1.5 text-xs font-medium", viewMode === 'list' ? "bg-primary text-primary-foreground" : "hover:bg-muted")} aria-label="Vista lista">
+            <List className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => setViewMode('cards')} className={cn("px-3 py-1.5 text-xs font-medium", viewMode === 'cards' ? "bg-primary text-primary-foreground" : "hover:bg-muted")} aria-label="Vista cards">
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -1056,6 +1113,29 @@ function FerramentasListView({
             <Button variant="outline" size="sm" onClick={() => setSearch('')}>Limpar pesquisa</Button>
           </CardContent>
         </Card>
+      ) : viewMode === 'list' ? (
+        /* Vista lista densa */
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border">
+            <span>Nome</span>
+            <span>Descrição</span>
+            <span className="text-right">Acções</span>
+          </div>
+          <div className="divide-y divide-border">
+            {filtered.map(f => (
+              <div key={f.id} className="group grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 hover:bg-muted/40 transition-colors text-sm items-center">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Wrench className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="font-medium truncate">{f.nome}</span>
+                </div>
+                <span className="text-xs text-muted-foreground truncate">{f.descricao || '—'}</span>
+                <div className="flex justify-end">
+                  <ActionMenu onEdit={() => onEdit(f)} onDelete={() => onDelete(f)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {filtered.map((f) => (
