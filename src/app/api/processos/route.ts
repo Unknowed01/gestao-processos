@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { processoCreateSchema, validateOrError } from '@/lib/schemas'
 
 // GET /api/processos
 export async function GET(req: NextRequest) {
@@ -27,20 +28,18 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, descricao, tipo, frequencia, kpis, obrigacoes, areaId, responsavelId, substitutoId } = body
-    if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
-    if (!areaId) return NextResponse.json({ error: 'Área é obrigatória' }, { status: 400 })
-    // Validação: responsável ≠ substituto (salvo se ambos vazios)
-    if (responsavelId && substitutoId && responsavelId === substitutoId) {
-      return NextResponse.json({ error: 'O responsável e o substituto não podem ser a mesma pessoa' }, { status: 400 })
+    const validation = validateOrError(processoCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+    const { nome, descricao, tipo, frequencia, kpis, obrigacoes, areaId, responsavelId, substitutoId } = validation.data
 
     const processo = await db.processo.create({
       data: {
-        nome: nome.trim(),
+        nome,
         descricao,
-        tipo: tipo || 'Gestão',
-        frequencia: frequencia || 'Mensal',
+        tipo,
+        frequencia,
         kpis: kpis || null,
         obrigacoes: obrigacoes || null,
         areaId,

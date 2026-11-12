@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import * as XLSX from 'xlsx'
 
+// Sanitiza células para prevenir CSV/Excel formula injection (C4)
+// Prefixa células que comecem com =, +, -, @, \t, \r, \n com apóstrofo
+function sanitizeCell(v: unknown): string {
+  const s = String(v ?? '')
+  return /^[=+\-@\t\r\n]/.test(s) ? "'" + s : s
+}
+
+// Sanitiza todos os valores de um objecto (para XLSX json_to_sheet)
+function sanitizeRow<T extends Record<string, unknown>>(row: T): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const key of Object.keys(row)) {
+    result[key] = sanitizeCell(row[key])
+  }
+  return result
+}
+
 // GET /api/export?format=json|csv|xlsx&areas=areaId1,areaId2
 // Exporta todos os dados (com filtro opcional por áreas)
 export async function GET(req: NextRequest) {
@@ -93,6 +109,7 @@ export async function GET(req: NextRequest) {
         dataRevisao: t.dataRevisao,
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
+        procedimentos: t.procedimentos,
       })),
       membros,
       ferramentas,
@@ -151,8 +168,8 @@ export async function GET(req: NextRequest) {
       const csvLines = [
         headers.join(';'),
         ...rows.map(r => headers.map(h => {
-          const v = r[h]
-          const s = String(v ?? '')
+          // sanitizeCell previne formula injection (=, +, -, @, etc.)
+          const s = sanitizeCell(r[h])
           // Escape de aspas e ponto-e-vírgula
           return s.includes(';') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
         }).join(';')),
@@ -197,11 +214,11 @@ export async function GET(req: NextRequest) {
           'Data Revisão': new Date(t.dataRevisao).toLocaleString('pt-PT'),
         }
       })
-      const wsTarefas = XLSX.utils.json_to_sheet(tarefasRows.length > 0 ? tarefasRows : [{ Info: 'Nenhum dado encontrado' }])
+      const wsTarefas = XLSX.utils.json_to_sheet(tarefasRows.length > 0 ? tarefasRows.map(sanitizeRow) : [{ Info: 'Nenhum dado encontrado' }])
       XLSX.utils.book_append_sheet(wb, wsTarefas, 'Tarefas')
 
       // Sheet: Áreas
-      const wsAreas = XLSX.utils.json_to_sheet(data.areas.map(a => ({
+      const wsAreas = XLSX.utils.json_to_sheet(data.areas.map(a => sanitizeRow({
         Nome: a.nome,
         Descrição: a.descricao || '',
         Objectivos: a.objectivos || '',
@@ -209,7 +226,7 @@ export async function GET(req: NextRequest) {
       XLSX.utils.book_append_sheet(wb, wsAreas, 'Áreas')
 
       // Sheet: Processos
-      const wsProcessos = XLSX.utils.json_to_sheet(data.processos.map(p => ({
+      const wsProcessos = XLSX.utils.json_to_sheet(data.processos.map(p => sanitizeRow({
         Nome: p.nome,
         Área: p.area?.nome || '',
         Tipo: p.tipo,
@@ -223,7 +240,7 @@ export async function GET(req: NextRequest) {
       XLSX.utils.book_append_sheet(wb, wsProcessos, 'Processos')
 
       // Sheet: Actividades
-      const wsActividades = XLSX.utils.json_to_sheet(data.actividades.map(a => ({
+      const wsActividades = XLSX.utils.json_to_sheet(data.actividades.map(a => sanitizeRow({
         Nome: a.nome,
         Processo: a.processo?.nome || '',
         Frequência: a.frequencia,
@@ -234,7 +251,7 @@ export async function GET(req: NextRequest) {
       XLSX.utils.book_append_sheet(wb, wsActividades, 'Actividades')
 
       // Sheet: Membros
-      const wsMembros = XLSX.utils.json_to_sheet(data.membros.map(m => ({
+      const wsMembros = XLSX.utils.json_to_sheet(data.membros.map(m => sanitizeRow({
         Nome: m.nome,
         Email: m.email || '',
         Cargo: m.cargo || '',
@@ -243,7 +260,7 @@ export async function GET(req: NextRequest) {
       XLSX.utils.book_append_sheet(wb, wsMembros, 'Membros')
 
       // Sheet: Ferramentas
-      const wsFerramentas = XLSX.utils.json_to_sheet(data.ferramentas.map(f => ({
+      const wsFerramentas = XLSX.utils.json_to_sheet(data.ferramentas.map(f => sanitizeRow({
         Nome: f.nome,
         Descrição: f.descricao || '',
       })))

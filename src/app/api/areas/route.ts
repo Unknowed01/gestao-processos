@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { areaCreateSchema, validateOrError } from '@/lib/schemas'
 
 // GET /api/areas - listar todas as áreas (versão sumária)
 export async function GET() {
@@ -21,12 +22,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, descricao, objectivos } = body
-    if (!nome?.trim()) {
-      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
+    const validation = validateOrError(areaCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+    const { nome, descricao, objectivos } = validation.data
     const area = await db.area.create({
-      data: { nome: nome.trim(), descricao, objectivos },
+      data: { nome, descricao, objectivos },
     })
     return NextResponse.json(area, { status: 201 })
   } catch (error) {

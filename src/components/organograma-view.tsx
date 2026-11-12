@@ -250,9 +250,6 @@ function AreaTile({ area, onClick, index = 0 }: { area: Area; onClick: () => voi
         <span className="flex items-center gap-0.5" title="Membros">
           <Users className="w-2.5 h-2.5" />{area._count?.membros ?? 0}
         </span>
-        <span className="flex items-center gap-0.5" title="Ferramentas">
-          <Wrench className="w-2.5 h-2.5" />{area._count?.ferramentas ?? 0}
-        </span>
       </div>
     </button>
   )

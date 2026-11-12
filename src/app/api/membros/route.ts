@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { membroCreateSchema, membroUpdateSchema, validateOrError } from '@/lib/schemas'
 
 // GET /api/membros - listar todos os membros da equipa
 // Suporta ?areaId=xxx (filtrar por área) e ?q=xxx (pesquisa para autocomplete)
@@ -58,15 +59,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, email, cargo, areaId } = body
-    if (!nome?.trim()) {
-      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
+    const validation = validateOrError(membroCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+    const { nome, email, cargo, areaId } = validation.data
+
     const membro = await db.membro.create({
       data: {
-        nome: nome.trim(),
-        email: email?.trim() || null,
-        cargo: cargo?.trim() || null,
+        nome,
+        email: email || null,
+        cargo: cargo || null,
         areaId: areaId || null,
       },
       include: {

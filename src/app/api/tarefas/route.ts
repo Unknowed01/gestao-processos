@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { tarefaCreateSchema, validateOrError } from '@/lib/schemas'
 
 // GET /api/tarefas - listar tarefas (com filtros opcionais)
 export async function GET(req: NextRequest) {
@@ -31,27 +32,24 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const {
-      nome, descricao, inputs, outputs, actividadeId, ferramentaIds, procedimentos,
-      instrucoesNasFerramentas
-    } = body
-    if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
-    if (!actividadeId) return NextResponse.json({ error: 'Actividade é obrigatória' }, { status: 400 })
+    const validation = validateOrError(tarefaCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+    const { nome, descricao, inputs, outputs, instrucoesNasFerramentas, actividadeId, ferramentaIds, procedimentos } = validation.data
 
-    // Validar que a actividade existe
     const actividade = await db.actividade.findUnique({ where: { id: actividadeId } })
     if (!actividade) return NextResponse.json({ error: 'Actividade não encontrada' }, { status: 404 })
 
     const tarefa = await db.tarefa.create({
       data: {
-        nome: nome.trim(),
+        nome,
         descricao: descricao || null,
-        inputs: inputs || '',
-        outputs: outputs || '',
+        inputs,
+        outputs,
         instrucoesNasFerramentas: !!instrucoesNasFerramentas,
         actividadeId,
         ferramentaIds: Array.isArray(ferramentaIds) ? ferramentaIds.join(',') : (ferramentaIds || ''),
-        // dataRevisao é definida automaticamente pelo @default(now())
         procedimentos: {
           create: Array.isArray(procedimentos)
             ? procedimentos

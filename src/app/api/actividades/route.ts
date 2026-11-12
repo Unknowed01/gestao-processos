@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { actividadeCreateSchema, validateOrError } from '@/lib/schemas'
 
 // GET /api/actividades
 export async function GET(req: NextRequest) {
@@ -27,19 +28,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { nome, descricao, frequencia, processoId, responsavelId, substitutoId } = body
-    if (!nome?.trim()) return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
-    if (!processoId) return NextResponse.json({ error: 'Processo é obrigatório' }, { status: 400 })
-    // Validação: responsável ≠ substituto
-    if (responsavelId && substitutoId && responsavelId === substitutoId) {
-      return NextResponse.json({ error: 'O responsável e o substituto não podem ser a mesma pessoa' }, { status: 400 })
+    const validation = validateOrError(actividadeCreateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+    const { nome, descricao, frequencia, processoId, responsavelId, substitutoId } = validation.data
 
     const actividade = await db.actividade.create({
       data: {
-        nome: nome.trim(),
+        nome,
         descricao,
-        frequencia: frequencia || 'Mensal',
+        frequencia,
         processoId,
         responsavelId: responsavelId || null,
         substitutoId: substitutoId || null,
