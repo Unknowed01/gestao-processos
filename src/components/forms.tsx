@@ -49,7 +49,6 @@ export function AreaFormDialog({
   const [form, setForm] = useState<AreaFormData>({ nome: '', descricao: '', objectivos: '' })
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
-  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
