@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info, CheckCircle2 } from 'lucide-react'
+import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench, Building2, UserPlus, Workflow, Activity, Trash2, Pencil, Target, Scale, Info, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Tarefa, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -30,9 +30,11 @@ export function AreaFormDialog({
 }) {
   const [form, setForm] = useState<AreaFormData>({ nome: '', descricao: '', objectivos: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
+      setServerError(null)
       setForm({
         nome: initial?.nome ?? '',
         descricao: initial?.descricao ?? '',
@@ -43,10 +45,13 @@ export function AreaFormDialog({
 
   const submit = async () => {
     if (!form.nome.trim()) return
+    setServerError(null)
     setSubmitting(true)
     try {
       await onSubmit(form)
       onOpenChange(false)
+    } catch (e) {
+      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -63,6 +68,12 @@ export function AreaFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {serverError && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError}</span>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="area-nome">Nome *</Label>
             <Input id="area-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Corretagem" />
@@ -110,10 +121,12 @@ export function MembroFormDialog({
   const [membroSelecionado, setMembroSelecionado] = useState<Membro | null>(null)
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
   const [emailTocado, setEmailTocado] = useState(false)
+  const [serverError, setServerError] = useState<{ field?: string; message: string } | null>(null)
 
   useEffect(() => {
     if (open) {
       setEmailTocado(false)
+      setServerError(null)
       setForm({
         nome: initial?.nome ?? '',
         email: initial?.email ?? '',
@@ -157,6 +170,7 @@ export function MembroFormDialog({
   const submit = async () => {
     if (!form.nome.trim()) return
     if (emailErro) { setEmailTocado(true); return }
+    setServerError(null)
     setSubmitting(true)
     try {
       if (isAssociar && onAssociate) {
@@ -165,9 +179,12 @@ export function MembroFormDialog({
         await onSubmit({ ...form, email: form.email.trim() })
       }
       onOpenChange(false)
-    } catch {
-      // O erro já foi apresentado (toast) por quem tratou o pedido: mantém o diálogo aberto
-      // para o utilizador poder corrigir os dados sem os perder.
+    } catch (e) {
+      const msg = (e as Error).message
+      let field: string | undefined
+      if (/email/i.test(msg)) field = 'email'
+      else if (/nome/i.test(msg)) field = 'nome'
+      setServerError({ field, message: msg })
     } finally { setSubmitting(false) }
   }
 
@@ -189,17 +206,31 @@ export function MembroFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {serverError && !serverError.field && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError.message}</span>
+            </div>
+          )}
           {/* Campo Nome — com autocomplete quando showCombobox */}
           <div className="space-y-2 relative">
             <Label htmlFor="m-nome">Nome completo *</Label>
             <Input
               id="m-nome"
               value={form.nome}
-              onChange={e => showCombobox ? pesquisarMembros(e.target.value) : setForm({ ...form, nome: e.target.value })}
+              onChange={e => { if (showCombobox) pesquisarMembros(e.target.value); else setForm({ ...form, nome: e.target.value }); setServerError(null) }}
               placeholder="Ex: João Silva"
               onFocus={() => showCombobox && sugestoes.length > 0 && setMostrarSugestoes(true)}
               onBlur={() => setTimeout(() => setMostrarSugestoes(false), 200)}
+              className={cn(serverError?.field === 'nome' && 'border-destructive ring-2 ring-destructive/20')}
+              aria-invalid={serverError?.field === 'nome'}
             />
+            {serverError?.field === 'nome' && (
+              <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                <AlertCircle className="w-3 h-3" />
+                {serverError.message}
+              </p>
+            )}
             {/* Sugestões de membros existentes */}
             {showCombobox && mostrarSugestoes && sugestoes.length > 0 && (
               <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border border-border bg-popover shadow-md max-h-64 overflow-y-auto">
@@ -252,17 +283,20 @@ export function MembroFormDialog({
                 id="m-email"
                 type="email"
                 value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
+                onChange={e => { setForm({ ...form, email: e.target.value }); setServerError(null) }}
                 onBlur={() => setEmailTocado(true)}
                 placeholder="joao@empresa.ao"
                 disabled={isAssociar}
-                aria-invalid={emailTocado && emailErro}
-                aria-describedby={emailTocado && emailErro ? 'm-email-erro' : undefined}
-                className={cn(emailTocado && emailErro && 'border-destructive focus-visible:ring-destructive/30')}
+                aria-invalid={serverError?.field === 'email' || (emailTocado && emailErro)}
+                aria-describedby={(serverError?.field === 'email' || (emailTocado && emailErro)) ? 'm-email-erro' : undefined}
+                className={cn(
+                  (serverError?.field === 'email' || (emailTocado && emailErro)) && 'border-destructive focus-visible:ring-destructive/30'
+                )}
               />
-              {emailTocado && emailErro && (
-                <p id="m-email-erro" role="alert" className="text-xs text-destructive">
-                  Email inválido. Exemplo: joao@empresa.ao
+              {(serverError?.field === 'email' || (emailTocado && emailErro)) && (
+                <p id="m-email-erro" role="alert" className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {serverError?.field === 'email' ? serverError.message : 'Email inválido. Exemplo: joao@empresa.ao'}
                 </p>
               )}
             </div>
@@ -322,9 +356,11 @@ export function ProcessoFormDialog({
   })
   const [submitting, setSubmitting] = useState(false)
   const [erroValidacao, setErroValidacao] = useState('')
+  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
+      setServerError(null)
       setForm({
         nome: initial?.nome ?? '',
         descricao: initial?.descricao ?? '',
@@ -364,10 +400,13 @@ export function ProcessoFormDialog({
       return
     }
     setErroValidacao('')
+    setServerError(null)
     setSubmitting(true)
     try {
       await onSubmit(form)
       onOpenChange(false)
+    } catch (e) {
+      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -503,6 +542,12 @@ export function ProcessoFormDialog({
               {erroValidacao}
             </div>
           )}
+          {serverError && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError}</span>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
@@ -541,9 +586,11 @@ export function ActividadeFormDialog({
   })
   const [submitting, setSubmitting] = useState(false)
   const [erroValidacao, setErroValidacao] = useState('')
+  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
+      setServerError(null)
       setForm({
         nome: initial?.nome ?? '',
         descricao: initial?.descricao ?? '',
@@ -574,10 +621,13 @@ export function ActividadeFormDialog({
       return
     }
     setErroValidacao('')
+    setServerError(null)
     setSubmitting(true)
     try {
       await onSubmit(form)
       onOpenChange(false)
+    } catch (e) {
+      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -668,6 +718,12 @@ export function ActividadeFormDialog({
               {erroValidacao}
             </div>
           )}
+          {serverError && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError}</span>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
@@ -711,9 +767,11 @@ export function TarefaFormDialog({
   const [mostrarFerramentaSugestoes, setMostrarFerramentaSugestoes] = useState(false)
   const [ferramentasLocais, setFerramentasLocais] = useState<Ferramenta[]>([])
   const [criandoFerramenta, setCriandoFerramenta] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
+      setServerError(null)
       const ferramentaIds = initial?.ferramentaIds ? initial.ferramentaIds.split(',').filter(Boolean) : []
       const procs = initial?.procedimentos?.length
         ? [...initial.procedimentos].sort((a, b) => a.passo - b.passo).map(p => ({ descricao: p.descricao }))
@@ -771,10 +829,13 @@ export function TarefaFormDialog({
 
   const submit = async () => {
     if (!form.nome.trim() || !form.actividadeId || !form.inputs.trim() || !form.outputs.trim()) return
+    setServerError(null)
     setSubmitting(true)
     try {
       await onSubmit({ ...form, procedimentos: form.procedimentos.filter(p => p.descricao.trim()) })
       onOpenChange(false)
+    } catch (e) {
+      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -791,6 +852,12 @@ export function TarefaFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
+          {serverError && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError}</span>
+            </div>
+          )}
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="t-nome">Nome da tarefa *</Label>
@@ -982,9 +1049,11 @@ export function FerramentaFormDialog({
 }) {
   const [form, setForm] = useState<FerramentaFormData>({ nome: '', descricao: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
+      setServerError(null)
       setForm({
         nome: initial?.nome ?? '',
         descricao: initial?.descricao ?? '',
@@ -994,10 +1063,13 @@ export function FerramentaFormDialog({
 
   const submit = async () => {
     if (!form.nome.trim()) return
+    setServerError(null)
     setSubmitting(true)
     try {
       await onSubmit(form)
       onOpenChange(false)
+    } catch (e) {
+      setServerError((e as Error).message)
     } finally { setSubmitting(false) }
   }
 
@@ -1014,6 +1086,12 @@ export function FerramentaFormDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {serverError && (
+            <div className="p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{serverError}</span>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="f-nome">Nome *</Label>
             <Input id="f-nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Outlook" />
