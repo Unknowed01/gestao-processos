@@ -14,6 +14,7 @@ import { Loader2, Plus, X, ArrowDownToLine, ArrowUpFromLine, ListOrdered, Wrench
 import { useState, useEffect, useMemo } from 'react'
 import { Area, Membro, Processo, Actividade, Tarefa, Ferramenta, TIPOS_PROCESSO, FREQUENCIAS } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { emailValido } from '@/lib/email'
 
 /* ============== Componente de erro inline reutilizável ============== */
 function InlineError({ message }: { message: string }) {
@@ -135,9 +136,11 @@ export function MembroFormDialog({
   const [sugestoes, setSugestoes] = useState<Membro[]>([])
   const [membroSelecionado, setMembroSelecionado] = useState<Membro | null>(null)
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const [emailTocado, setEmailTocado] = useState(false)
 
   useEffect(() => {
     if (open) {
+      setEmailTocado(false)
       setForm({
         nome: initial?.nome ?? '',
         email: initial?.email ?? '',
@@ -176,15 +179,19 @@ export function MembroFormDialog({
 
   const isAssociar = !!membroSelecionado && !!lockedAreaId && mode === 'create'
 
+  // Email é opcional, mas se preenchido tem de ser válido (na criação e na edição)
+  const emailErro = !isAssociar && !emailValido(form.email)
+
   const submit = async () => {
     if (!form.nome.trim()) return
+    if (emailErro) { setEmailTocado(true); return }
     setSubmitting(true)
     setServerError(null)
     try {
       if (isAssociar && onAssociate) {
         await onAssociate({ membroId: membroSelecionado!.id, areaId: lockedAreaId! })
       } else {
-        await onSubmit(form)
+        await onSubmit({ ...form, email: form.email.trim() })
       }
       onOpenChange(false)
     } catch (e) {
@@ -270,7 +277,23 @@ export function MembroFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="m-email">Email</Label>
-              <Input id="m-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="joao@empresa.ao" disabled={isAssociar} />
+              <Input
+                id="m-email"
+                type="email"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                onBlur={() => setEmailTocado(true)}
+                placeholder="joao@empresa.ao"
+                disabled={isAssociar}
+                aria-invalid={emailTocado && emailErro}
+                aria-describedby={emailTocado && emailErro ? 'm-email-erro' : undefined}
+                className={cn(emailTocado && emailErro && 'border-destructive focus-visible:ring-destructive/30')}
+              />
+              {emailTocado && emailErro && (
+                <p id="m-email-erro" role="alert" className="text-xs text-destructive">
+                  Email inválido. Exemplo: joao@empresa.ao
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="m-cargo">Cargo / Função</Label>
@@ -292,7 +315,7 @@ export function MembroFormDialog({
         </div>
         <DialogFooter>
           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-          <Button onClick={submit} disabled={submitting || !form.nome.trim()}>
+          <Button onClick={submit} disabled={submitting || !form.nome.trim() || emailErro}>
             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {mode === 'edit' ? 'Guardar' : isAssociar ? 'Associar à área' : 'Criar Membro'}
           </Button>

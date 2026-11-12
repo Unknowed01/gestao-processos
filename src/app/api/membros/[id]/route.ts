@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { membroUpdateSchema, validateOrError } from '@/lib/schemas'
 
 // GET /api/membros/[id]
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -24,15 +25,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 // PUT /api/membros/[id]
-// Suporta actualização completa (todos os campos) ou parcial (apenas areaId)
+// Suporta actualização completa (todos os campos) ou parcial (apenas areaId).
+// Ambos os modos são validados com o mesmo schema usado na criação (incl. formato do email).
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const body = await req.json()
-    const { nome, email, cargo, areaId } = body
+
+    const validation = validateOrError(membroUpdateSchema, body)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+    const { nome, email, cargo, areaId } = validation.data
 
     // Modo parcial: apenas actualizar areaId (para associação a área)
-    if (!nome && body.areaId !== undefined) {
+    if (!nome) {
+      if (areaId === undefined) {
+        return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
+      }
       const membro = await db.membro.update({
         where: { id },
         data: { areaId: areaId || null },
@@ -41,20 +51,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // Modo completo: actualizar todos os campos
-    if (!nome?.trim()) {
-      return NextResponse.json({ error: 'Nome é obrigatório' }, { status: 400 })
-    }
     const membro = await db.membro.update({
       where: { id },
       data: {
-        nome: nome.trim(),
-        email: email?.trim() || null,
-        cargo: cargo?.trim() || null,
+        nome,
+        email: email || null,
+        cargo: cargo || null,
         areaId: areaId || null,
       },
     })
     return NextResponse.json(membro)
-  } catch (error) {
+  } catch (error: unknown) {
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined
+    if (code === 'P2002') {
+      return NextResponse.json({ error: 'Email já cadastrado' }, { status: 400 })
+    }
+    if (code === 'P2025') {
+      return NextResponse.json({ error: 'Membro não encontrado' }, { status: 404 })
+    }
     console.error('Erro ao actualizar membro:', error)
     return NextResponse.json({ error: 'Erro ao actualizar membro' }, { status: 500 })
   }

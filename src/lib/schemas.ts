@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { EMAIL_REGEX, normalizarEmail } from './email'
 
 // ============== Schemas de validação (zod) ==============
 // Todos os endpoints POST/PUT usam estes schemas para validar input.
@@ -7,7 +8,17 @@ import { z } from 'zod'
 // Helpers
 const cuid = z.string().min(1).max(50)
 const stringOpcional = z.string().trim().max(2000).nullable().optional()
-const emailSchema = z.string().trim().email('Email inválido').max(255).nullable().optional()
+// Email opcional: vazio/espaços → null; caso contrário tem de ter formato válido.
+// Usado tanto na criação como na edição de membros.
+const emailSchema = z.preprocess(
+  normalizarEmail,
+  z.string().max(255, 'Email demasiado longo').regex(EMAIL_REGEX, 'Email inválido').nullable().optional()
+)
+
+// Campos opcionais vindos de formulários: "" / espaços equivalem a "não preenchido" (null).
+const vazioParaNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v)
+const idOpcional = z.preprocess(vazioParaNull, z.string().min(1).max(50).nullable().optional())
+const cargoOpcional = z.preprocess(vazioParaNull, z.string().trim().max(200).nullable().optional())
 
 // ============== Área ==============
 export const areaCreateSchema = z.object({
@@ -22,19 +33,17 @@ export const areaUpdateSchema = areaCreateSchema
 export const membroCreateSchema = z.object({
   nome: z.string().trim().min(1, 'Nome é obrigatório').max(200, 'Nome demasiado longo'),
   email: emailSchema,
-  cargo: z.string().trim().max(200).nullable().optional(),
-  areaId: z.string().min(1).nullable().optional(),
-}).refine(
-  (data) => !data.email || data.email.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email),
-  { message: 'Email inválido', path: ['email'] }
-)
+  cargo: cargoOpcional,
+  areaId: idOpcional,
+})
 
-// Update: sem refine
+// Update: mesmas regras de email que a criação; todos os campos opcionais
+// (a associação parcial a uma área envia apenas areaId).
 export const membroUpdateSchema = z.object({
-  nome: z.string().trim().min(1).max(200).optional(),
+  nome: z.string().trim().min(1, 'Nome é obrigatório').max(200, 'Nome demasiado longo').optional(),
   email: emailSchema,
-  cargo: z.string().trim().max(200).nullable().optional(),
-  areaId: z.string().min(1).nullable().optional(),
+  cargo: cargoOpcional,
+  areaId: idOpcional,
 })
 
 // Associação parcial (apenas areaId)

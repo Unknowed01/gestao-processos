@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { emailValido } from '@/lib/email'
 
 // POST /api/import
 // Recebe JSON com estrutura completa e importa (substituindo dados existentes)
@@ -84,6 +85,11 @@ export async function POST(req: NextRequest) {
       for (const m of data.membros) {
         if (!m.id || !m.nome) continue
         try {
+          // Email inválido: importa o membro sem email (em vez de gravar um valor inválido)
+          if (typeof m.email === 'string' && !emailValido(m.email)) {
+            console.warn('Email inválido ignorado na importação:', m.id)
+            m.email = null
+          }
           // Verifica se email já existe noutro membro
           if (m.email) {
             const existente = await db.membro.findFirst({ where: { email: m.email, NOT: { id: m.id } } })
