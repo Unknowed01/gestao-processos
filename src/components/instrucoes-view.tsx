@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ArrowRight, BookOpen, Building2, CheckCircle2, CircleAlert,
+  ArrowRight, BookOpen, Building2, CheckCircle2, CircleAlert, Info,
   Database, LayoutGrid, Users, Workflow, Wrench
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -56,7 +56,7 @@ export function InstrucoesView({ onNavigate }: { onNavigate: (section: GuideSect
             <GuideBullet>Indique o tipo, a frequência e, sempre que possível, o responsável e o substituto.</GuideBullet>
             <GuideBullet>Dentro de cada processo, registe as actividades e as tarefas que o compõem.</GuideBullet>
           </ul>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => onNavigate('areas')}>
+          <Button variant="outline" size="sm" className="mt-auto" onClick={() => onNavigate('areas')}>
             Ir para o Organograma <ArrowRight className="w-3.5 h-3.5 ml-2" />
           </Button>
         </GuideCard>
@@ -71,9 +71,10 @@ export function InstrucoesView({ onNavigate }: { onNavigate: (section: GuideSect
             <GuideBullet>Associe as ferramentas utilizadas e ordene os passos do procedimento.</GuideBullet>
             <GuideBullet>Marque “Instruções nas ferramentas” quando o modo de execução já estiver documentado na própria ferramenta.</GuideBullet>
           </ul>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Para abrir ou editar uma tarefa, navegue pela árvore da área até à tarefa pretendida.
-          </p>
+          <div className="mt-auto flex items-start gap-2 rounded-md border bg-muted/50 p-3 text-xs leading-relaxed text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+            <span>Para abrir ou editar uma tarefa, navegue pela árvore da área até à tarefa pretendida.</span>
+          </div>
         </GuideCard>
 
         <GuideCard
@@ -86,7 +87,7 @@ export function InstrucoesView({ onNavigate }: { onNavigate: (section: GuideSect
             <GuideBullet>Ao editar processos e actividades, atribua um responsável e, se aplicável, um substituto.</GuideBullet>
             <GuideBullet>O responsável e o substituto devem ser pessoas diferentes.</GuideBullet>
           </ul>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => onNavigate('membros')}>
+          <Button variant="outline" size="sm" className="mt-auto" onClick={() => onNavigate('membros')}>
             Gerir membros <ArrowRight className="w-3.5 h-3.5 ml-2" />
           </Button>
         </GuideCard>
@@ -101,7 +102,7 @@ export function InstrucoesView({ onNavigate }: { onNavigate: (section: GuideSect
             <GuideBullet>Resolva áreas sem processos, processos sem responsável e tarefas sem instruções nas ferramentas.</GuideBullet>
             <GuideBullet>Consulte a actividade recente para acompanhar alterações.</GuideBullet>
           </ul>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => onNavigate('dashboard')}>
+          <Button variant="outline" size="sm" className="mt-auto" onClick={() => onNavigate('dashboard')}>
             Abrir Dashboard <ArrowRight className="w-3.5 h-3.5 ml-2" />
           </Button>
         </GuideCard>
@@ -114,7 +115,7 @@ export function InstrucoesView({ onNavigate }: { onNavigate: (section: GuideSect
           <p className="text-sm text-muted-foreground">
             Registe cada ferramenta uma vez na secção Ferramentas. Depois, associe-a às tarefas em que é utilizada.
           </p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => onNavigate('ferramentas')}>
+          <Button variant="outline" size="sm" className="mt-auto" onClick={() => onNavigate('ferramentas')}>
             Gerir ferramentas <ArrowRight className="w-3.5 h-3.5 ml-2" />
           </Button>
         </GuideCard>
@@ -132,7 +133,7 @@ export function InstrucoesView({ onNavigate }: { onNavigate: (section: GuideSect
             <CircleAlert className="w-4 h-4 flex-shrink-0" />
             <span>A opção de substituir durante a importação apaga os dados actuais. Exporte uma cópia antes de a utilizar.</span>
           </div>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => onNavigate('dados')}>
+          <Button variant="outline" size="sm" className="mt-auto" onClick={() => onNavigate('dados')}>
             Abrir Gestão de Dados <ArrowRight className="w-3.5 h-3.5 ml-2" />
           </Button>
         </GuideCard>
@@ -161,7 +162,7 @@ function GuideCard({
   children: React.ReactNode
 }) {
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Icon className="w-4 h-4 text-primary" />
@@ -169,7 +170,7 @@ function GuideCard({
         </CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      <CardContent className="flex flex-1 flex-col">{children}</CardContent>
     </Card>
   )
 }

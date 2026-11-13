@@ -8,9 +8,15 @@ import {
   ArrowRight, TrendingUp, Clock, ChevronRight, AlertTriangle, UserX,
   CircleAlert
 } from 'lucide-react'
-import { DashboardData, TIPO_COLORS, TIPO_DOT, FREQ_COLORS } from '@/lib/types'
+import { DashboardData, FREQ_COLORS } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { DashboardSkeleton } from '@/components/skeletons'
+
+const TIPO_GREENS: Record<string, string> = {
+  Inbound: 'bg-emerald-500',
+  Outbound: 'bg-emerald-600',
+  'Gestão': 'bg-emerald-700',
+}
 
 export function DashboardView({
   data, loading, onOpenArea, onOpenProcesso, onOpenTarefa, onNavigateMembros
@@ -59,45 +65,29 @@ export function DashboardView({
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Visão Geral</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Estado do mapeamento de processos. Items abaixo precisam de atenção.
+          Estado do mapeamento de processos. Itens abaixo precisam de atenção.
         </p>
       </div>
 
       {/* KPI Hero — % cobertura */}
       <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-primary uppercase tracking-wide">Cobertura do mapeamento</p>
-              <div className="flex items-baseline gap-3 mt-1">
-                <span className="text-4xl font-bold">{pctCoberto}%</span>
-                <span className="text-sm text-emerald-600 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> {areasComProcessos} de {total.areas} áreas
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {data.alerts.areasSemProcessos.length > 0
-                  ? `${data.alerts.areasSemProcessos.length} áreas ainda sem processos definidos`
-                  : 'Todas as áreas têm processos definidos!'}
-              </p>
+        <CardContent className="p-4 sm:p-5">
+          <div>
+            <p className="text-xs font-semibold text-primary uppercase tracking-wide">Cobertura do mapeamento</p>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mt-1">
+              <span className="text-4xl font-bold">{pctCoberto}%</span>
+              <span className="text-sm text-emerald-600 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> {areasComProcessos} de {total.areas} áreas
+              </span>
             </div>
-            {/* Barra de progresso circular */}
-            <div className="relative w-20 h-20 flex-shrink-0">
-              <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="32" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
-                <circle
-                  cx="40" cy="40" r="32" fill="none" stroke="currentColor" strokeWidth="6"
-                  className="text-primary transition-all duration-500"
-                  strokeDasharray={`${2 * Math.PI * 32}`}
-                  strokeDashoffset={`${2 * Math.PI * 32 * (1 - pctCoberto / 100)}`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{pctCoberto}%</span>
-            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {data.alerts.areasSemProcessos.length > 0
+                ? `${data.alerts.areasSemProcessos.length} áreas ainda sem processos definidos`
+                : 'Todas as áreas têm processos definidos!'}
+            </p>
           </div>
           {data.alerts.areasSemProcessos.length > 0 && (
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => onOpenArea(data.alerts.areasSemProcessos[0].id)}>
+            <Button variant="outline" size="sm" className="mt-4 min-h-11" onClick={() => onOpenArea(data.alerts.areasSemProcessos[0].id)}>
               Abrir primeira área sem processos
               <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
@@ -111,14 +101,14 @@ export function DashboardView({
           <AlertTriangle className="w-4 h-4 text-amber-500" />
           Precisa de atenção
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           {/* Áreas sem processos */}
           <AlertCard
             icon={Building2}
             color="rose"
             title="Áreas sem processos"
             count={data.alerts.areasSemProcessos.length}
-            items={data.alerts.areasSemProcessos.slice(0, 3).map(a => ({
+            items={data.alerts.areasSemProcessos.slice(0, 2).map(a => ({
               label: a.nome,
               onClick: () => onOpenArea(a.id),
             }))}
@@ -131,7 +121,7 @@ export function DashboardView({
             color="amber"
             title="Processos sem responsável"
             count={data.alerts.processosSemResponsavel.length}
-            items={data.alerts.processosSemResponsavel.slice(0, 3).map(p => ({
+            items={data.alerts.processosSemResponsavel.slice(0, 2).map(p => ({
               label: p.nome,
               onClick: () => onOpenProcesso(p.areaId, p.id),
             }))}
@@ -148,7 +138,7 @@ export function DashboardView({
             title="Tarefas sem instruções"
             count={data.alerts.tarefasSemInstrucoes.count}
             extra={`${pctTarefasSemInstr}% de ${total.tarefas} tarefas`}
-            items={data.alerts.tarefasSemInstrucoes.items.slice(0, 3).map(t => ({
+            items={data.alerts.tarefasSemInstrucoes.items.slice(0, 2).map(t => ({
               label: `${t.nome} · ${t.actividade.nome}`,
               onClick: () => onOpenTarefa(t.actividade.processo.areaId, t.actividade.processo.id, t.actividade.id, t.id),
             }))}
@@ -188,22 +178,19 @@ export function DashboardView({
               ) : (
                 data.processosPorTipo.map((p) => {
                   const pct = Math.round((p._count / totalProcessos) * 100)
+                  const tone = TIPO_GREENS[p.tipo] ?? 'bg-primary'
                   return (
                     <div key={p.tipo}>
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1.5">
-                          <span className={cn("w-2 h-2 rounded-full", TIPO_DOT[p.tipo])} />
+                          <span className={cn("w-2 h-2 rounded-full", tone)} />
                           <span className="text-xs font-medium">{p.tipo}</span>
                         </div>
                         <span className="text-xs text-muted-foreground">{p._count} · {pct}%</span>
                       </div>
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={cn("h-full rounded-full",
-                            p.tipo === 'Inbound' && 'bg-emerald-500',
-                            p.tipo === 'Outbound' && 'bg-orange-500',
-                            p.tipo === 'Gestão' && 'bg-violet-500'
-                          )}
+                          className={cn("h-full rounded-full", tone)}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -297,7 +284,7 @@ function AlertCard({
   const c = colors[color]
   return (
     <Card className={cn(c.border, c.bg)}>
-      <CardContent className="p-4">
+    <CardContent className="p-3">
         <div className="flex items-start gap-3 mb-2">
           <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", c.icon)}>
             <Icon className="w-4 h-4" />
@@ -311,8 +298,8 @@ function AlertCard({
         {items && items.length > 0 && (
           <ul className="text-xs text-muted-foreground space-y-0.5 mb-2 pl-1">
             {items.map((item, i) => (
-              <li key={i} className="truncate">
-                <button onClick={item.onClick} className="text-left hover:text-foreground hover:underline">
+              <li key={i} className="min-w-0">
+                <button onClick={item.onClick} className="min-h-9 w-full truncate px-1 py-1.5 text-left hover:text-foreground hover:underline">
                   • {item.label}
                 </button>
               </li>
@@ -320,7 +307,7 @@ function AlertCard({
             {count > items.length && <li className="italic">+{count - items.length} outros</li>}
           </ul>
         )}
-        <Button variant="ghost" size="sm" onClick={onClick} disabled={count === 0} className="text-xs h-7 px-2">
+        <Button variant="ghost" size="sm" onClick={onClick} disabled={count === 0} className="min-h-9 px-2 text-xs">
           {cta} <ArrowRight className="w-3 h-3 ml-1" />
         </Button>
       </CardContent>

@@ -242,7 +242,7 @@ export default function Home() {
   // Breadcrumb
   const breadcrumbs: BreadcrumbItem[] = []
   if (view.level !== 'dashboard') {
-    breadcrumbs.push({ label: 'Início', level: 'areas' })
+    breadcrumbs.push({ label: 'Início', level: 'dashboard' })
   }
   if (view.level === 'membros') {
     breadcrumbs.push({ label: 'Membros', level: 'areas' })
@@ -250,6 +250,8 @@ export default function Home() {
     breadcrumbs.push({ label: 'Ferramentas', level: 'areas' })
   } else if (view.level === 'instrucoes') {
     breadcrumbs.push({ label: 'Instruções', level: 'areas' })
+  } else if (view.level === 'dados') {
+    breadcrumbs.push({ label: 'Dados', level: 'dados' })
   } else if (view.level === 'areas') {
     breadcrumbs.push({ label: 'Organograma', level: 'areas' })
   } else if (view.level === 'area') {
@@ -274,7 +276,8 @@ export default function Home() {
 
   const handleBreadcrumb = (item: BreadcrumbItem, index: number) => {
     const target = breadcrumbs[index]
-    if (target.level === 'areas') goToAreas()
+    if (target.level === 'dashboard') goToDashboard()
+    else if (target.level === 'areas') goToAreas()
     else if (target.level === 'area') setView({ level: 'area', areaId: target.id })
     else if (target.level === 'processo') setView({ level: 'processo', areaId: view.areaId, processoId: target.id })
     else if (target.level === 'actividade') setView({ level: 'actividade', areaId: view.areaId, processoId: view.processoId, actividadeId: target.id })
@@ -289,152 +292,125 @@ export default function Home() {
 
   // ===== Handlers de criação =====
   const handleCreateArea = async (data: AreaFormData) => {
-    try {
-      await fetcher('/api/areas', { method: 'POST', body: JSON.stringify(data) })
-      toast.success('Área criada com sucesso!')
-      await loadAreas(); await loadDashboard()
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher('/api/areas', { method: 'POST', body: JSON.stringify(data) })
+    toast.success('Área criada com sucesso!')
+    await loadAreas(); await loadDashboard()
   }
 
   const handleCreateMembro = async (data: MembroFormData) => {
-    try {
-      await fetcher('/api/membros', { method: 'POST', body: JSON.stringify(data) })
-      toast.success('Membro criado com sucesso!')
-      await loadMembros(); await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher('/api/membros', { method: 'POST', body: JSON.stringify(data) })
+    toast.success('Membro criado com sucesso!')
+    await loadMembros(); await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   const handleAssociateMembro = async (data: MembroAssociarData) => {
-    try {
-      // PUT /api/membros/[id] para actualizar o areaId
-      await fetcher(`/api/membros/${data.membroId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ areaId: data.areaId }),
-      })
-      toast.success('Membro associado à área com sucesso!')
-      await loadMembros(); await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher(`/api/membros/${data.membroId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ areaId: data.areaId }),
+    })
+    toast.success('Membro associado à área com sucesso!')
+    await loadMembros(); await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   const handleCreateProcesso = async (data: ProcessoFormData) => {
-    try {
-      await fetcher('/api/processos', { method: 'POST', body: JSON.stringify(data) })
-      toast.success('Processo criado com sucesso!')
-      await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher('/api/processos', { method: 'POST', body: JSON.stringify(data) })
+    toast.success('Processo criado com sucesso!')
+    await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   const handleCreateActividade = async (data: ActividadeFormData) => {
-    try {
-      await fetcher('/api/actividades', { method: 'POST', body: JSON.stringify(data) })
-      toast.success('Actividade criada com sucesso!')
-      await loadDashboard()
-      if (view.processoId) await loadProcessoDetalhe(view.processoId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher('/api/actividades', { method: 'POST', body: JSON.stringify(data) })
+    toast.success('Actividade criada com sucesso!')
+    await loadDashboard()
+    if (view.processoId) await loadProcessoDetalhe(view.processoId)
   }
 
   const handleCreateTarefa = async (data: TarefaFormData) => {
-    try {
-      await fetcher('/api/tarefas', { method: 'POST', body: JSON.stringify(data) })
-      toast.success('Tarefa criada com sucesso!')
-      await loadDashboard()
-      if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher('/api/tarefas', { method: 'POST', body: JSON.stringify(data) })
+    toast.success('Tarefa criada com sucesso!')
+    await loadDashboard()
+    if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
   }
 
   const handleCreateFerramenta = async (data: FerramentaFormData) => {
-    try {
-      await fetcher('/api/ferramentas', { method: 'POST', body: JSON.stringify(data) })
-      toast.success('Ferramenta criada com sucesso!')
-      await loadFerramentas(); await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher('/api/ferramentas', { method: 'POST', body: JSON.stringify(data) })
+    toast.success('Ferramenta criada com sucesso!')
+    await loadFerramentas(); await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   // ===== Handlers de edição =====
   const handleEditArea = async (data: AreaFormData) => {
     if (!editArea) return
-    try {
-      await fetcher(`/api/areas/${editArea.id}`, { method: 'PUT', body: JSON.stringify(data) })
-      toast.success('Área actualizada!')
-      setEditArea(null)
-      await loadAreas(); await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher(`/api/areas/${editArea.id}`, { method: 'PUT', body: JSON.stringify(data) })
+    toast.success('Área actualizada!')
+    setEditArea(null)
+    await loadAreas(); await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   const handleEditMembro = async (data: MembroFormData) => {
     if (!editMembro) return
-    try {
-      await fetcher(`/api/membros/${editMembro.id}`, { method: 'PUT', body: JSON.stringify(data) })
-      toast.success('Membro actualizado!')
-      setEditMembro(null)
-      await loadMembros(); await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher(`/api/membros/${editMembro.id}`, { method: 'PUT', body: JSON.stringify(data) })
+    toast.success('Membro actualizado!')
+    setEditMembro(null)
+    await loadMembros(); await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   const handleEditProcesso = async (data: ProcessoFormData) => {
     if (!editProcesso) return
-    try {
-      await fetcher(`/api/processos/${editProcesso.id}`, { method: 'PUT', body: JSON.stringify(data) })
-      toast.success('Processo actualizado!')
-      setEditProcesso(null)
-      await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-      if (view.processoId) await loadProcessoDetalhe(view.processoId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher(`/api/processos/${editProcesso.id}`, { method: 'PUT', body: JSON.stringify(data) })
+    toast.success('Processo actualizado!')
+    setEditProcesso(null)
+    await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
+    if (view.processoId) await loadProcessoDetalhe(view.processoId)
   }
 
   const handleEditActividade = async (data: ActividadeFormData) => {
     if (!editActividade) return
-    try {
-      await fetcher(`/api/actividades/${editActividade.id}`, { method: 'PUT', body: JSON.stringify(data) })
-      toast.success('Actividade actualizada!')
-      setEditActividade(null)
-      await loadDashboard()
-      if (view.processoId) await loadProcessoDetalhe(view.processoId)
-      if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher(`/api/actividades/${editActividade.id}`, { method: 'PUT', body: JSON.stringify(data) })
+    toast.success('Actividade actualizada!')
+    setEditActividade(null)
+    await loadDashboard()
+    if (view.processoId) await loadProcessoDetalhe(view.processoId)
+    if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
   }
 
   const handleEditTarefa = async (data: TarefaFormData) => {
     if (!editTarefa) return
-    try {
-      // PUT envia todos os campos, incluindo procedimentos (a API elimina os antigos e cria os novos)
-      await fetcher(`/api/tarefas/${editTarefa.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          nome: data.nome,
-          descricao: data.descricao,
-          inputs: data.inputs,
-          outputs: data.outputs,
-          instrucoesNasFerramentas: data.instrucoesNasFerramentas,
-          actividadeId: data.actividadeId,
-          ferramentaIds: data.ferramentaIds,
-          procedimentos: data.procedimentos,
-        })
+    // PUT envia todos os campos, incluindo procedimentos (a API elimina os antigos e cria os novos)
+    await fetcher(`/api/tarefas/${editTarefa.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        nome: data.nome,
+        descricao: data.descricao,
+        inputs: data.inputs,
+        outputs: data.outputs,
+        instrucoesNasFerramentas: data.instrucoesNasFerramentas,
+        actividadeId: data.actividadeId,
+        ferramentaIds: data.ferramentaIds,
+        procedimentos: data.procedimentos,
       })
-      toast.success('Tarefa actualizada!')
-      setEditTarefa(null)
-      await loadDashboard()
-      if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
-      if (view.tarefaId) await loadTarefaDetalhe(view.tarefaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    })
+    toast.success('Tarefa actualizada!')
+    setEditTarefa(null)
+    await loadDashboard()
+    if (view.actividadeId) await loadActividadeDetalhe(view.actividadeId)
+    if (view.tarefaId) await loadTarefaDetalhe(view.tarefaId)
   }
 
   const handleEditFerramenta = async (data: FerramentaFormData) => {
     if (!editFerramenta) return
-    try {
-      await fetcher(`/api/ferramentas/${editFerramenta.id}`, { method: 'PUT', body: JSON.stringify(data) })
-      toast.success('Ferramenta actualizada!')
-      setEditFerramenta(null)
-      await loadFerramentas(); await loadDashboard()
-      if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
-    } catch (e) { toast.error((e as Error).message); throw e }
+    await fetcher(`/api/ferramentas/${editFerramenta.id}`, { method: 'PUT', body: JSON.stringify(data) })
+    toast.success('Ferramenta actualizada!')
+    setEditFerramenta(null)
+    await loadFerramentas(); await loadDashboard()
+    if (view.level === 'area' && view.areaId) await loadAreaDetalhe(view.areaId)
   }
 
   // ===== Handlers de eliminação =====
@@ -593,7 +569,9 @@ export default function Home() {
             </button>
           ) : (
             <p className="text-xs text-muted-foreground text-center px-1">
-              {dashboard ? `${dashboard.counts.areas} áreas · ${dashboard.counts.processos} processos · ${dashboard.counts.tarefas} tarefas` : '—'}
+              {dashboard
+                ? `${dashboard.counts.areas} ${dashboard.counts.areas === 1 ? 'área' : 'áreas'} · ${dashboard.counts.processos} ${dashboard.counts.processos === 1 ? 'processo' : 'processos'} · ${dashboard.counts.tarefas} ${dashboard.counts.tarefas === 1 ? 'tarefa' : 'tarefas'}`
+                : '—'}
             </p>
           )}
         </div>
@@ -602,7 +580,7 @@ export default function Home() {
       {/* Conteúdo principal */}
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="lg:hidden sticky top-0 z-20 bg-background/80 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-muted" aria-label="Abrir menu">
+          <button onClick={() => setSidebarOpen(true)} className="flex h-12 w-12 items-center justify-center rounded-lg hover:bg-muted" aria-label="Abrir menu">
             <Menu className="w-5 h-5" />
           </button>
           <h2 className="font-semibold text-sm">
@@ -1192,7 +1170,7 @@ function ActionMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-11 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Mais acções"
           onClick={(e) => e.stopPropagation()}
         >

@@ -310,6 +310,11 @@ function Ramo({
 }) {
   const Icon = grupo.icon
   const { tone } = grupo
+  const metricas = [
+    { titulo: 'Áreas', valor: grupo.todas.length, etiqueta: 'áreas' },
+    { titulo: 'Processos', valor: grupo.processos, etiqueta: 'proc.' },
+    { titulo: 'Membros', valor: grupo.membros, etiqueta: 'memb.' },
+  ].filter(metrica => metrica.valor > 0)
 
   return (
     <div className="relative px-0 py-2 md:px-2 md:pt-10 md:pb-0">
@@ -343,15 +348,18 @@ function Ramo({
           <Icon className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className={cn('block truncate text-sm font-semibold', tone.text)}>{grupo.titulo}</span>
-          <span className="block truncate text-[11px] text-muted-foreground">{grupo.subtitulo}</span>
-          <span className="mt-1 flex items-center gap-2.5 text-[10px] text-muted-foreground tabular-nums">
-            <span title="Áreas">{grupo.todas.length} áreas</span>
-            <span aria-hidden>·</span>
-            <span title="Processos">{grupo.processos} proc.</span>
-            <span aria-hidden>·</span>
-            <span title="Membros">{grupo.membros} memb.</span>
-          </span>
+          <span className={cn('block whitespace-normal break-words text-sm font-semibold leading-snug', tone.text)}>{grupo.titulo}</span>
+          <span className="block whitespace-normal break-words text-[11px] leading-snug text-muted-foreground">{grupo.subtitulo}</span>
+          {metricas.length > 0 && (
+            <span className="mt-1 flex items-center gap-2.5 text-[10px] text-muted-foreground tabular-nums">
+              {metricas.map((metrica, index) => (
+                <span key={metrica.titulo} className="inline-flex items-center gap-2.5">
+                  {index > 0 && <span aria-hidden>·</span>}
+                  <span title={metrica.titulo}>{metrica.valor} {metrica.etiqueta}</span>
+                </span>
+              ))}
+            </span>
+          )}
         </span>
         {!pesquisa && (
           <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', !expandido && '-rotate-90')} />
@@ -410,17 +418,20 @@ function AreaNode({
         </span>
         <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:text-foreground" />
       </span>
-      <span className="mt-1.5 flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
-        <span
-          className={cn('flex items-center gap-1', processos === 0 && 'opacity-60')}
-          title={processos === 0 ? 'Sem processos registados' : 'Processos'}
-        >
-          <Workflow className="h-3 w-3" />{processos}
+      {(processos > 0 || membros > 0) && (
+        <span className="mt-1.5 flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
+          {processos > 0 && (
+            <span className="flex items-center gap-1" title="Processos">
+              <Workflow className="h-3 w-3" />{processos}
+            </span>
+          )}
+          {membros > 0 && (
+            <span className="flex items-center gap-1" title="Membros">
+              <Users className="h-3 w-3" />{membros}
+            </span>
+          )}
         </span>
-        <span className={cn('flex items-center gap-1', membros === 0 && 'opacity-60')} title="Membros">
-          <Users className="h-3 w-3" />{membros}
-        </span>
-      </span>
+      )}
     </button>
   )
 }

@@ -26,7 +26,7 @@ import { DetailSkeleton, ListSkeleton, GridSkeleton } from '@/components/skeleto
 /* ============== Breadcrumb de drill-down ============== */
 export interface BreadcrumbItem {
   label: string
-  level: 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa'
+  level: 'dashboard' | 'dados' | 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa'
   id?: string
 }
 
