@@ -151,8 +151,20 @@ export interface DashboardData {
   }>
   alerts: {
     areasSemProcessos: Array<{ id: string; nome: string }>
-    processosSemResponsavel: Array<{ id: string; nome: string; area: { id: string; nome: string } | null }>
-    tarefasSemInstrucoes: { count: number; total: number }
+    processosSemResponsavel: Array<{ id: string; nome: string; areaId: string; area: { id: string; nome: string } | null }>
+    tarefasSemInstrucoes: {
+      count: number
+      total: number
+      items: Array<{
+        id: string
+        nome: string
+        actividade: {
+          id: string
+          nome: string
+          processo: { id: string; nome: string; areaId: string }
+        }
+      }>
+    }
   }
   actividadesRecentes: Array<{
     tipo: string

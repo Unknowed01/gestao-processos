@@ -6,7 +6,7 @@ import {
   LayoutGrid, Building2, Users, Wrench, Database,
   Menu, Workflow, ListChecks, Activity,
   Mail, UserPlus, Search, Trash2, Plus, MoreVertical, Pencil,
-  ChevronsLeft, ChevronsRight, List
+  ChevronsLeft, ChevronsRight, List, BookOpen
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,7 @@ import {
 import { DashboardView } from '@/components/dashboard-view'
 import { OrganogramaView } from '@/components/organograma-view'
 import { DadosView } from '@/components/dados-view'
+import { InstrucoesView } from '@/components/instrucoes-view'
 import { TreeSidebar } from '@/components/tree-sidebar'
 import { ListSkeleton, GridSkeleton } from '@/components/skeletons'
 import {
@@ -36,7 +37,7 @@ import {
   AreaFormData, MembroFormData, MembroAssociarData, ProcessoFormData, ActividadeFormData, TarefaFormData, FerramentaFormData
 } from '@/components/forms'
 
-type ViewLevel = 'dashboard' | 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa' | 'membros' | 'ferramentas' | 'dados'
+type ViewLevel = 'dashboard' | 'areas' | 'area' | 'processo' | 'actividade' | 'tarefa' | 'membros' | 'ferramentas' | 'dados' | 'instrucoes'
 
 interface ViewState {
   level: ViewLevel
@@ -47,7 +48,7 @@ interface ViewState {
 }
 
 interface NavItem {
-  id: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados'
+  id: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados' | 'instrucoes'
   label: string
   icon: React.ComponentType<{ className?: string }>
 }
@@ -58,6 +59,7 @@ const NAV: NavItem[] = [
   { id: 'membros', label: 'Membros', icon: Users },
   { id: 'ferramentas', label: 'Ferramentas', icon: Wrench },
   { id: 'dados', label: 'Dados', icon: Database },
+  { id: 'instrucoes', label: 'Instruções', icon: BookOpen },
 ]
 
 const fetcher = async <T,>(url: string, opts?: RequestInit): Promise<T> => {
@@ -189,9 +191,17 @@ export default function Home() {
     if (view.level === 'dashboard') loadDashboard()
     if (view.level === 'areas') loadAreas()
     if (view.level === 'area' && view.areaId) loadAreaDetalhe(view.areaId)
-    if (view.level === 'processo' && view.processoId) loadProcessoDetalhe(view.processoId)
+    if (view.level === 'processo' && view.processoId) {
+      loadProcessoDetalhe(view.processoId)
+      if (view.areaId) loadAreaDetalhe(view.areaId)
+    }
     if (view.level === 'actividade' && view.actividadeId) loadActividadeDetalhe(view.actividadeId)
-    if (view.level === 'tarefa' && view.tarefaId) loadTarefaDetalhe(view.tarefaId)
+    if (view.level === 'tarefa' && view.tarefaId) {
+      loadTarefaDetalhe(view.tarefaId)
+      if (view.areaId) loadAreaDetalhe(view.areaId)
+      if (view.processoId) loadProcessoDetalhe(view.processoId)
+      if (view.actividadeId) loadActividadeDetalhe(view.actividadeId)
+    }
     if (view.level === 'membros') { loadMembros(); loadAreas() }
     if (view.level === 'ferramentas') { loadFerramentas(); loadAreas() }
     if (view.level === 'dados') loadAreas()
@@ -213,14 +223,21 @@ export default function Home() {
   const goToMembros = () => setView({ level: 'membros' })
   const goToFerramentas = () => setView({ level: 'ferramentas' })
   const goToDados = () => setView({ level: 'dados' })
+  const goToInstrucoes = () => setView({ level: 'instrucoes' })
+  const navigateToSection = (section: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados') =>
+    setView({ level: section })
 
   const openArea = (id: string) => {
     if (id === '__areas__') { goToAreas(); return }
     setView({ level: 'area', areaId: id })
   }
   const openProcesso = (id: string) => setView({ level: 'processo', areaId: view.areaId, processoId: id })
+  const openDashboardProcesso = (areaId: string, processoId: string) =>
+    setView({ level: 'processo', areaId, processoId })
   const openActividade = (id: string) => setView({ level: 'actividade', areaId: view.areaId, processoId: view.processoId, actividadeId: id })
   const openTarefa = (id: string) => setView({ level: 'tarefa', areaId: view.areaId, processoId: view.processoId, actividadeId: view.actividadeId, tarefaId: id })
+  const openDashboardTarefa = (areaId: string, processoId: string, actividadeId: string, tarefaId: string) =>
+    setView({ level: 'tarefa', areaId, processoId, actividadeId, tarefaId })
 
   // Breadcrumb
   const breadcrumbs: BreadcrumbItem[] = []
@@ -231,6 +248,8 @@ export default function Home() {
     breadcrumbs.push({ label: 'Membros', level: 'areas' })
   } else if (view.level === 'ferramentas') {
     breadcrumbs.push({ label: 'Ferramentas', level: 'areas' })
+  } else if (view.level === 'instrucoes') {
+    breadcrumbs.push({ label: 'Instruções', level: 'areas' })
   } else if (view.level === 'areas') {
     breadcrumbs.push({ label: 'Organograma', level: 'areas' })
   } else if (view.level === 'area') {
@@ -261,10 +280,11 @@ export default function Home() {
     else if (target.level === 'actividade') setView({ level: 'actividade', areaId: view.areaId, processoId: view.processoId, actividadeId: target.id })
   }
 
-  const activeNav: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados' =
+  const activeNav: 'dashboard' | 'areas' | 'membros' | 'ferramentas' | 'dados' | 'instrucoes' =
     view.level === 'membros' ? 'membros' :
     view.level === 'ferramentas' ? 'ferramentas' :
     view.level === 'dados' ? 'dados' :
+    view.level === 'instrucoes' ? 'instrucoes' :
     view.level === 'dashboard' ? 'dashboard' : 'areas'
 
   // ===== Handlers de criação =====
@@ -530,6 +550,7 @@ export default function Home() {
                   else if (item.id === 'membros') goToMembros()
                   else if (item.id === 'ferramentas') goToFerramentas()
                   else if (item.id === 'dados') goToDados()
+                  else if (item.id === 'instrucoes') goToInstrucoes()
                   setSidebarOpen(false)
                 }}
                 title={sidebarCollapsed ? `${item.label}${count !== undefined ? ` (${count})` : ''}` : undefined}
@@ -590,6 +611,7 @@ export default function Home() {
              view.level === 'membros' ? 'Membros' :
              view.level === 'ferramentas' ? 'Ferramentas' :
              view.level === 'dados' ? 'Dados' :
+             view.level === 'instrucoes' ? 'Instruções' :
              areaDetalhe?.nome || '—'}
           </h2>
           <div className="w-9" />
@@ -605,6 +627,8 @@ export default function Home() {
               data={dashboard}
               loading={!!loading.dashboard}
               onOpenArea={openArea}
+              onOpenProcesso={openDashboardProcesso}
+              onOpenTarefa={openDashboardTarefa}
               onNavigateMembros={goToMembros}
             />
           )}
@@ -616,6 +640,10 @@ export default function Home() {
               onOpenArea={openArea}
               onCreateArea={() => setAreaModal(true)}
             />
+          )}
+
+          {view.level === 'instrucoes' && (
+            <InstrucoesView onNavigate={navigateToSection} />
           )}
 
           {/* === Encapsulamento: árvore + conteúdo quando dentro de uma área === */}

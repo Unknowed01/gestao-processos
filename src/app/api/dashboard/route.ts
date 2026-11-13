@@ -73,16 +73,32 @@ export async function GET() {
       select: {
         id: true,
         nome: true,
+        areaId: true,
         area: { select: { id: true, nome: true } },
       },
       orderBy: { nome: 'asc' },
       take: 10,
     })
 
-    // Contagem de tarefas sem instruções
-    const tarefasSemInstrucoes = await db.tarefa.count({
-      where: { instrucoesNasFerramentas: false },
-    })
+    const [tarefasSemInstrucoesCount, tarefasSemInstrucoes] = await Promise.all([
+      db.tarefa.count({ where: { instrucoesNasFerramentas: false } }),
+      db.tarefa.findMany({
+        where: { instrucoesNasFerramentas: false },
+        select: {
+          id: true,
+          nome: true,
+          actividade: {
+            select: {
+              id: true,
+              nome: true,
+              processo: { select: { id: true, nome: true, areaId: true } },
+            },
+          },
+        },
+        orderBy: { nome: 'asc' },
+        take: 10,
+      }),
+    ])
 
     // Actividades recentes (proxy: entidades ordenadas por updatedAt)
     const [areasRecentes, processosRecentes, tarefasRecentesAct] = await Promise.all([
@@ -126,7 +142,11 @@ export async function GET() {
       alerts: {
         areasSemProcessos,
         processosSemResponsavel,
-        tarefasSemInstrucoes: { count: tarefasSemInstrucoes, total: tarefas },
+        tarefasSemInstrucoes: {
+          count: tarefasSemInstrucoesCount,
+          total: tarefas,
+          items: tarefasSemInstrucoes,
+        },
       },
       actividadesRecentes,
     })

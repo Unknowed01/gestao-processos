@@ -13,11 +13,13 @@ import { cn } from '@/lib/utils'
 import { DashboardSkeleton } from '@/components/skeletons'
 
 export function DashboardView({
-  data, loading, onOpenArea, onNavigateMembros
+  data, loading, onOpenArea, onOpenProcesso, onOpenTarefa, onNavigateMembros
 }: {
   data: DashboardData | null
   loading: boolean
   onOpenArea: (id: string) => void
+  onOpenProcesso: (areaId: string, processoId: string) => void
+  onOpenTarefa: (areaId: string, processoId: string, actividadeId: string, tarefaId: string) => void
   onNavigateMembros: () => void
 }) {
   if (loading && !data) return <DashboardSkeleton />
@@ -95,8 +97,8 @@ export function DashboardView({
             </div>
           </div>
           {data.alerts.areasSemProcessos.length > 0 && (
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => onOpenArea('__areas__')}>
-              Ver {data.alerts.areasSemProcessos.length} áreas sem processos
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => onOpenArea(data.alerts.areasSemProcessos[0].id)}>
+              Abrir primeira área sem processos
               <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
           )}
@@ -116,9 +118,12 @@ export function DashboardView({
             color="rose"
             title="Áreas sem processos"
             count={data.alerts.areasSemProcessos.length}
-            items={data.alerts.areasSemProcessos.slice(0, 3).map(a => a.nome)}
-            cta="Ver no organograma"
-            onClick={() => onOpenArea('__areas__')}
+            items={data.alerts.areasSemProcessos.slice(0, 3).map(a => ({
+              label: a.nome,
+              onClick: () => onOpenArea(a.id),
+            }))}
+            cta="Abrir área"
+            onClick={() => data.alerts.areasSemProcessos[0] && onOpenArea(data.alerts.areasSemProcessos[0].id)}
           />
           {/* Processos sem responsável */}
           <AlertCard
@@ -126,9 +131,15 @@ export function DashboardView({
             color="amber"
             title="Processos sem responsável"
             count={data.alerts.processosSemResponsavel.length}
-            items={data.alerts.processosSemResponsavel.slice(0, 3).map(p => p.nome)}
+            items={data.alerts.processosSemResponsavel.slice(0, 3).map(p => ({
+              label: p.nome,
+              onClick: () => onOpenProcesso(p.areaId, p.id),
+            }))}
             cta="Atribuir responsáveis"
-            onClick={() => onOpenArea('__areas__')}
+            onClick={() => {
+              const processo = data.alerts.processosSemResponsavel[0]
+              if (processo) onOpenProcesso(processo.areaId, processo.id)
+            }}
           />
           {/* Tarefas sem instruções */}
           <AlertCard
@@ -137,8 +148,15 @@ export function DashboardView({
             title="Tarefas sem instruções"
             count={data.alerts.tarefasSemInstrucoes.count}
             extra={`${pctTarefasSemInstr}% de ${total.tarefas} tarefas`}
+            items={data.alerts.tarefasSemInstrucoes.items.slice(0, 3).map(t => ({
+              label: `${t.nome} · ${t.actividade.nome}`,
+              onClick: () => onOpenTarefa(t.actividade.processo.areaId, t.actividade.processo.id, t.actividade.id, t.id),
+            }))}
             cta="Rever tarefas"
-            onClick={() => onOpenArea('__areas__')}
+            onClick={() => {
+              const tarefa = data.alerts.tarefasSemInstrucoes.items[0]
+              if (tarefa) onOpenTarefa(tarefa.actividade.processo.areaId, tarefa.actividade.processo.id, tarefa.actividade.id, tarefa.id)
+            }}
           />
         </div>
       </div>
@@ -267,7 +285,7 @@ function AlertCard({
   color: 'rose' | 'amber'
   title: string
   count: number
-  items?: string[]
+  items?: { label: string; onClick: () => void }[]
   extra?: string
   cta: string
   onClick: () => void
@@ -292,11 +310,17 @@ function AlertCard({
         </div>
         {items && items.length > 0 && (
           <ul className="text-xs text-muted-foreground space-y-0.5 mb-2 pl-1">
-            {items.map((item, i) => <li key={i} className="truncate">• {item}</li>)}
+            {items.map((item, i) => (
+              <li key={i} className="truncate">
+                <button onClick={item.onClick} className="text-left hover:text-foreground hover:underline">
+                  • {item.label}
+                </button>
+              </li>
+            ))}
             {count > items.length && <li className="italic">+{count - items.length} outros</li>}
           </ul>
         )}
-        <Button variant="ghost" size="sm" onClick={onClick} className="text-xs h-7 px-2">
+        <Button variant="ghost" size="sm" onClick={onClick} disabled={count === 0} className="text-xs h-7 px-2">
           {cta} <ArrowRight className="w-3 h-3 ml-1" />
         </Button>
       </CardContent>
